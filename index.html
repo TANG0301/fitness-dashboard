@@ -1,887 +1,352 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>宛諭的訓練追蹤</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<style>
-  :root {
-    --bg: #f2f0ea;
-    --surface: #ffffff;
-    --surface2: #f7f5f0;
-    --border: #e8e5de;
-    --border2: #d8d4cb;
-    --text: #1a1816;
-    --text2: #6b6660;
-    --text3: #aaa69e;
-    --green: #3b6d11;
-    --green-bg: #eaf3de;
-    --red: #a32d2d;
-    --red-bg: #fcebeb;
-    --blue: #185fa5;
-    --blue-bg: #e6f1fb;
-    --amber: #854f0b;
-    --amber-bg: #faeeda;
-    --radius: 14px;
-    --radius-sm: 9px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text); overscroll-behavior: none; }
+const express = require('express');
+const crypto = require('crypto');
+const axios = require('axios');
+const { google } = require('googleapis');
 
-  /* ── Login ── */
-  #login {
-    min-height: 100vh;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 2rem;
-    background: var(--bg);
-  }
-  .login-mark {
-    width: 56px; height: 56px; border-radius: 16px;
-    background: var(--text); color: var(--bg);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 24px; margin-bottom: 1.5rem;
-    font-family: 'DM Mono', monospace;
-  }
-  .login-title { font-size: 19px; font-weight: 500; margin-bottom: 4px; }
-  .login-sub { font-size: 13px; color: var(--text2); margin-bottom: 2rem; }
-  .login-input {
-    width: 100%; max-width: 300px;
-    border: 1px solid var(--border2);
-    border-radius: var(--radius-sm);
-    padding: 11px 14px;
-    font-size: 15px; font-family: 'DM Sans', sans-serif;
-    background: var(--surface); color: var(--text);
-    display: block; margin-bottom: 10px;
-    outline: none;
-    transition: border-color .15s;
-  }
-  .login-input:focus { border-color: var(--text); }
-  .login-btn {
-    width: 100%; max-width: 300px;
-    padding: 11px;
-    background: var(--text); color: var(--bg);
-    border: none; border-radius: var(--radius-sm);
-    font-size: 15px; font-weight: 500; font-family: 'DM Sans', sans-serif;
-    cursor: pointer; transition: opacity .15s;
-  }
-  .login-btn:active { opacity: .75; }
-  .login-err { font-size: 13px; color: var(--red); margin-top: 8px; min-height: 18px; text-align: center; max-width: 300px; }
+const app = express();
 
-  /* ── App shell ── */
-  #app { display: none; height: 100vh; flex-direction: column; overflow: hidden; }
+const LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET;
+const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const SHEET_ID = process.env.SHEET_ID;
 
-  .topbar {
-    background: var(--bg);
-    padding: 52px 18px 10px;
-    display: flex; align-items: flex-end; justify-content: space-between;
-    flex-shrink: 0;
-  }
-  .topbar-name { font-size: 22px; font-weight: 500; letter-spacing: -.4px; }
-  .topbar-date { font-size: 12px; color: var(--text2); margin-top: 2px; }
-  .logout-btn {
-    font-size: 12px; color: var(--text2);
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 20px; padding: 5px 12px; cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-  }
-
-  .tabs {
-    display: flex; background: var(--bg);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-    padding: 0 6px;
-  }
-  .tab {
-    flex: 1; padding: 10px 4px;
-    font-size: 13px; font-weight: 500;
-    color: var(--text3); text-align: center;
-    border-bottom: 2px solid transparent;
-    cursor: pointer; transition: color .15s, border-color .15s;
-    background: none; border-left: none; border-right: none; border-top: none;
-    font-family: 'DM Sans', sans-serif;
-  }
-  .tab.on { color: var(--text); border-bottom-color: var(--text); }
-
-  .screens { flex: 1; overflow: hidden; position: relative; }
-  .screen {
-    display: none; position: absolute; inset: 0;
-    overflow-y: auto; padding: 14px 14px 80px;
-    -webkit-overflow-scrolling: touch;
-  }
-  .screen.on { display: block; }
-
-  /* ── Components ── */
-  .metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-bottom: 12px; }
-  .mc {
-    background: var(--surface); border-radius: var(--radius-sm);
-    border: 1px solid var(--border); padding: 12px 14px;
-  }
-  .mc-label { font-size: 11px; color: var(--text3); margin-bottom: 5px; }
-  .mc-val { font-size: 24px; font-weight: 500; line-height: 1; }
-  .mc-unit { font-size: 12px; color: var(--text2); margin-left: 2px; }
-  .mc-delta { font-size: 11px; margin-top: 4px; }
-  .up { color: var(--green); } .dn { color: var(--red); } .eq { color: var(--text3); }
-
-  .card {
-    background: var(--surface); border-radius: var(--radius);
-    border: 1px solid var(--border); padding: 14px;
-    margin-bottom: 10px;
-  }
-  .sec-title {
-    font-size: 11px; font-weight: 500; color: var(--text3);
-    letter-spacing: .05em; text-transform: uppercase;
-    margin-bottom: 12px;
-  }
-
-  /* heatmap */
-  .week-labels { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; margin-bottom: 4px; }
-  .wl { font-size: 9px; color: var(--text3); text-align: center; }
-  .heatmap { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
-  .hd { height: 30px; border-radius: 5px; background: var(--surface2); }
-  .hd.l1 { background: #c7e6b8; }
-  .hd.l2 { background: #7fbe4e; }
-  .hd.l3 { background: #3b6d11; }
-
-  /* pr list */
-  .pr-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 9px 0; border-bottom: 1px solid var(--surface2);
-  }
-  .pr-row:last-child { border-bottom: none; }
-  .pr-name { font-size: 13px; font-weight: 500; }
-  .pr-tag { font-size: 10px; color: var(--text3); margin-top: 2px; }
-  .pr-right { text-align: right; }
-  .pr-weight { font-size: 14px; font-weight: 500; }
-  .pr-badge {
-    display: inline-block; font-size: 10px; padding: 2px 7px;
-    border-radius: 20px; margin-top: 2px;
-    background: var(--green-bg); color: var(--green);
-  }
-
-  /* exercise table */
-  .search-wrap { position: relative; margin-bottom: 10px; }
-  .search-input {
-    width: 100%; border: 1px solid var(--border2);
-    border-radius: var(--radius-sm);
-    padding: 9px 12px 9px 36px;
-    font-size: 13px; font-family: 'DM Sans', sans-serif;
-    background: var(--surface); color: var(--text);
-    outline: none; transition: border-color .15s;
-  }
-  .search-input:focus { border-color: var(--text); }
-  .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 14px; color: var(--text3); }
-  .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 10px; }
-  .chip {
-    padding: 5px 13px; border-radius: 20px; font-size: 12px; font-weight: 500;
-    white-space: nowrap; border: 1px solid var(--border2); color: var(--text2);
-    background: var(--surface); cursor: pointer; transition: all .15s;
-    font-family: 'DM Sans', sans-serif;
-  }
-  .chip.on { background: var(--text); color: var(--bg); border-color: var(--text); }
-  .chips::-webkit-scrollbar { display: none; }
-
-  .ex-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 0; border-bottom: 1px solid var(--surface2);
-  }
-  .ex-row:last-child { border-bottom: none; }
-  .ex-name { font-size: 13px; font-weight: 500; }
-  .ex-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
-  .ex-right { text-align: right; }
-  .ex-cur { font-size: 13px; font-weight: 500; }
-  .ex-best { font-size: 11px; color: var(--text3); margin-top: 2px; }
-  .ex-best.hi { color: var(--green); }
-
-  /* log */
-  .week-block { margin-bottom: 16px; }
-  .week-head {
-    display: flex; justify-content: space-between; align-items: baseline;
-    margin-bottom: 8px;
-  }
-  .week-range { font-size: 13px; font-weight: 500; }
-  .week-stat { font-size: 11px; color: var(--text3); }
-  .log-item {
-    background: var(--surface); border-radius: var(--radius-sm);
-    border: 1px solid var(--border);
-    padding: 10px 12px; margin-bottom: 6px;
-  }
-  .log-top { display: flex; justify-content: space-between; align-items: flex-start; }
-  .log-name { font-size: 13px; font-weight: 500; }
-  .log-date-lbl { font-size: 11px; color: var(--text3); margin-top: 1px; }
-  .log-detail { font-size: 12px; color: var(--text2); margin-top: 4px; }
-  .log-chips { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
-  .log-chip {
-    font-size: 10px; padding: 2px 8px; border-radius: 20px;
-    background: var(--surface2); color: var(--text2);
-  }
-  .log-chip.muscle { background: var(--green-bg); color: var(--green); }
-  .log-chip.pr { background: var(--amber-bg); color: var(--amber); }
-
-  /* inbody */
-  .ib-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-bottom: 12px; }
-  .ib-item { background: var(--surface2); border-radius: var(--radius-sm); padding: 11px 13px; }
-  .ib-label { font-size: 10px; color: var(--text3); margin-bottom: 4px; }
-  .ib-val { font-size: 20px; font-weight: 500; line-height: 1; }
-  .ib-unit { font-size: 11px; color: var(--text2); }
-  .ib-delta { font-size: 11px; margin-top: 3px; }
-  .status-pill {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 5px 12px; border-radius: 20px;
-    font-size: 12px; font-weight: 500;
-  }
-  .pill-green { background: var(--green-bg); color: var(--green); }
-  .pill-amber { background: var(--amber-bg); color: var(--amber); }
-
-  .chart-legends { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; }
-  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
-  .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
-  .chart-wrap { position: relative; height: 180px; }
-
-  /* bottom nav */
-  .bottomnav {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    height: 64px; background: var(--surface);
-    border-top: 1px solid var(--border);
-    display: flex; padding: 0 8px;
-    padding-bottom: env(safe-area-inset-bottom);
-    z-index: 100;
-  }
-  .nav-btn {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 3px;
-    cursor: pointer; background: none; border: none;
-    font-family: 'DM Sans', sans-serif;
-  }
-  .nav-ico { font-size: 20px; line-height: 1; }
-  .nav-lbl { font-size: 10px; color: var(--text3); font-weight: 500; }
-  .nav-btn.on .nav-lbl { color: var(--text); }
-
-  /* empty */
-  .empty { text-align: center; padding: 2.5rem 1rem; color: var(--text3); font-size: 13px; }
-
-  /* config notice */
-  .notice {
-    background: var(--amber-bg); border: 1px solid #d4a840;
-    border-radius: var(--radius-sm); padding: 10px 13px;
-    font-size: 12px; color: var(--amber); margin-bottom: 12px;
-    line-height: 1.5;
-  }
-
-  @media (min-width: 480px) {
-    #app { max-width: 430px; margin: 0 auto; }
-    .bottomnav { max-width: 430px; left: 50%; transform: translateX(-50%); }
-  }
-</style>
-</head>
-<body>
-
-<!-- ── Login ── -->
-<div id="login">
-  <div class="login-mark">W</div>
-  <p class="login-title">宛諭的訓練追蹤</p>
-  <p class="login-sub">請輸入密碼繼續</p>
-  <input class="login-input" type="password" id="pw" placeholder="密碼" autocomplete="current-password" />
-  <button class="login-btn" onclick="doLogin()">進入</button>
-  <p class="login-err" id="login-err"></p>
-</div>
-
-<!-- ── App ── -->
-<div id="app">
-  <div class="topbar">
-    <div>
-      <div class="topbar-name" id="topbar-name">載入中...</div>
-      <div class="topbar-date" id="topbar-date"></div>
-    </div>
-    <button class="logout-btn" onclick="doLogout()">登出</button>
-  </div>
-
-  <div class="tabs">
-    <button class="tab on" id="t0" onclick="switchTab(0)">總覽</button>
-    <button class="tab" id="t1" onclick="switchTab(1)">動作</button>
-    <button class="tab" id="t2" onclick="switchTab(2)">日誌</button>
-    <button class="tab" id="t3" onclick="switchTab(3)">InBody</button>
-  </div>
-
-  <div class="screens">
-    <!-- 總覽 -->
-    <div class="screen on" id="s0">
-      <div id="overview-notice"></div>
-      <div class="metric-grid" id="overview-metrics">
-        <div class="mc"><div class="mc-label">本週訓練</div><div class="mc-val">—</div></div>
-        <div class="mc"><div class="mc-label">本月累積</div><div class="mc-val">—</div></div>
-        <div class="mc"><div class="mc-label">總訓練次數</div><div class="mc-val">—</div></div>
-        <div class="mc"><div class="mc-label">最近狀態</div><div class="mc-val" style="font-size:14px;padding-top:6px;">—</div></div>
-      </div>
-
-      <div class="card">
-        <div class="sec-title">最近 4 週出席紀錄</div>
-        <div class="week-labels">
-          <div class="wl">一</div><div class="wl">二</div><div class="wl">三</div>
-          <div class="wl">四</div><div class="wl">五</div><div class="wl">六</div><div class="wl">日</div>
-        </div>
-        <div class="heatmap" id="heatmap"></div>
-        <div style="display:flex;gap:8px;margin-top:10px;align-items:center;">
-          <span style="font-size:10px;color:var(--text3);">少</span>
-          <div style="width:16px;height:12px;border-radius:3px;background:var(--surface2);border:1px solid var(--border);"></div>
-          <div style="width:16px;height:12px;border-radius:3px;background:#c7e6b8;"></div>
-          <div style="width:16px;height:12px;border-radius:3px;background:#7fbe4e;"></div>
-          <div style="width:16px;height:12px;border-radius:3px;background:#3b6d11;"></div>
-          <span style="font-size:10px;color:var(--text3);">多</span>
-        </div>
-      </div>
-
-      <div class="card" id="pr-card">
-        <div class="sec-title">近期 PR 突破</div>
-        <div id="pr-list"><div class="empty">載入中...</div></div>
-      </div>
-    </div>
-
-    <!-- 動作 -->
-    <div class="screen" id="s1">
-      <div class="search-wrap">
-        <span class="search-icon">🔍</span>
-        <input class="search-input" id="ex-search" placeholder="搜尋動作名稱..." oninput="filterEx()" />
-      </div>
-      <div class="chips" id="muscle-chips"></div>
-      <div class="card" style="padding:8px 14px;" id="ex-table">
-        <div class="empty">載入中...</div>
-      </div>
-    </div>
-
-    <!-- 日誌 -->
-    <div class="screen" id="s2">
-      <div class="chips" id="log-chips"></div>
-      <div id="log-list"><div class="empty">載入中...</div></div>
-    </div>
-
-    <!-- InBody -->
-    <div class="screen" id="s3">
-      <div id="ib-notice"></div>
-      <div class="card" id="ib-latest">
-        <div class="empty">載入中...</div>
-      </div>
-      <div class="card">
-        <div class="sec-title">趨勢圖</div>
-        <div class="chart-legends" id="ib-legends">
-          <div class="legend-item"><div class="legend-dot" style="background:#185fa5;"></div>體重 (kg)</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#3b6d11;"></div>骨骼肌 (kg)</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#993c1d;"></div>體脂率 (%)</div>
-        </div>
-        <div class="chart-wrap"><canvas id="ib-chart"></canvas></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="bottomnav">
-    <button class="nav-btn on" id="n0" onclick="switchTab(0)"><span class="nav-ico">◈</span><span class="nav-lbl">總覽</span></button>
-    <button class="nav-btn" id="n1" onclick="switchTab(1)"><span class="nav-ico">≡</span><span class="nav-lbl">動作</span></button>
-    <button class="nav-btn" id="n2" onclick="switchTab(2)"><span class="nav-ico">📅</span><span class="nav-lbl">日誌</span></button>
-    <button class="nav-btn" id="n3" onclick="switchTab(3)"><span class="nav-ico">◉</span><span class="nav-lbl">InBody</span></button>
-  </div>
-</div>
-
-<script>
-// ══════════════════════════════════
-//  CONFIG — 填入你的設定
-// ══════════════════════════════════
-const CFG = {
-  PASSWORD: '5566',
-  SHEET_ID: '1hYZervTmM7aDUJmSlE187omIAPa6zMi0JHcsPVt07Rg',
-  API_KEY: 'AIzaSyCxyLWIwWBIoV3JXyeb1qWi9En8qU5x4IQ',
-};
-
-// ══════════════════════════════════
-//  State
-// ══════════════════════════════════
-let workoutRows = [];
-let inbodyRows  = [];
-let ibChart     = null;
-let activeTab   = 0;
-let activeMuscleFiler = '全部';
-let activeLogFilter   = '全部';
-let initialized = false;
-
-// ══════════════════════════════════
-//  Auth
-// ══════════════════════════════════
-document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-
-function doLogin() {
-  const v = document.getElementById('pw').value;
-  if (v === CFG.PASSWORD) {
-    document.getElementById('login').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
-    if (!initialized) { initialized = true; initApp(); }
-  } else {
-    document.getElementById('login-err').textContent = '密碼錯誤，請再試一次';
-    document.getElementById('pw').value = '';
-  }
+// ── 驗證 LINE 簽名 ─────────────────────────────────────
+function verifySignature(body, signature) {
+  const hash = crypto
+    .createHmac('sha256', LINE_CHANNEL_SECRET)
+    .update(body)
+    .digest('base64');
+  return hash === signature;
 }
 
-function doLogout() {
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('login').style.display = 'flex';
-  document.getElementById('pw').value = '';
-}
+app.use('/webhook', express.raw({ type: 'application/json' }));
+app.use(express.json());
 
-// ══════════════════════════════════
-//  Tabs
-// ══════════════════════════════════
-function switchTab(i) {
-  for (let x = 0; x < 4; x++) {
-    document.getElementById('t' + x).className = 'tab' + (x === i ? ' on' : '');
-    document.getElementById('s' + x).className = 'screen' + (x === i ? ' on' : '');
-    document.getElementById('n' + x).className = 'nav-btn' + (x === i ? ' on' : '');
-  }
-  activeTab = i;
-}
 
-// ══════════════════════════════════
-//  Sheets fetch
-// ══════════════════════════════════
-const BASE = `https://sheets.googleapis.com/v4/spreadsheets/${CFG.SHEET_ID}/values`;
-
-async function fetchRange(range) {
-  if (!CFG.API_KEY) return null;
+// ── 啟動時列出可用模型 ─────────────────────────────────
+async function listModels() {
   try {
-    const r = await fetch(`${BASE}/${encodeURIComponent(range)}?key=${CFG.API_KEY}`);
-    if (!r.ok) return null;
-    const d = await r.json();
-    return d.values || [];
-  } catch { return null; }
-}
-
-function parseWorkoutSheet(rows) {
-  if (!rows || rows.length < 1) return [];
-  return rows.map(r => ({
-    date:           r[0] ?? '',
-    exercise_name:  r[1] ?? '',
-    type:           r[2] ?? '',
-    muscle_groups:  r[3] ?? '',
-    set:            r[4] ?? '',
-    weight_kg:      r[5] ?? '',
-    reps:           r[6] ?? '',
-    duration_sec:   r[7] ?? '',
-    max_weight_kg:  r[8] ?? '',
-    is_pr:          r[9] ?? 'FALSE',
-    is_skipped:     r[10] ?? 'FALSE',
-    note:           r[11] ?? '',
-    superset_group: r[12] ?? '',
-  }));
-}
-
-function parseInBodySheet(rows) {
-  if (!rows || rows.length < 1) return [];
-  return rows.map(r => ({
-    date:         r[0] ?? '',
-    weight_kg:    parseFloat(r[1]) || 0,
-    smm_kg:       parseFloat(r[2]) || 0,
-    body_fat_kg:  parseFloat(r[3]) || 0,
-    body_fat_pct: parseFloat(r[4]) || 0,
-    ffm_kg:       parseFloat(r[5]) || 0,
-    bmi:          parseFloat(r[6]) || 0,
-    bmr_kcal:     parseFloat(r[8]) || 0,
-  }));
-}
-
-function parseSheet(rows) {
-  if (!rows || rows.length < 2) return [];
-  const h = rows[0];
-  return rows.slice(1).map(r => {
-    const o = {};
-    h.forEach((k, i) => { o[k] = r[i] ?? ''; });
-    return o;
-  });
-}
-
-// ══════════════════════════════════
-//  Demo data
-// ══════════════════════════════════
-function demoWorkout() {
-  return [
-    { date:'2026-04-30', exercise_name:'深蹲 Squat',          type:'strength', muscle_groups:'下肢', set:5, weight_kg:80, reps:5, max_weight_kg:85, is_pr:'FALSE', note:'' },
-    { date:'2026-04-30', exercise_name:'深蹲 Squat',          type:'strength', muscle_groups:'下肢', set:1, weight_kg:85, reps:1, max_weight_kg:85, is_pr:'TRUE',  note:'新PR' },
-    { date:'2026-04-28', exercise_name:'臥推 Bench Press',    type:'strength', muscle_groups:'上肢', set:4, weight_kg:62.5, reps:8, max_weight_kg:65, is_pr:'FALSE', note:'' },
-    { date:'2026-04-28', exercise_name:'臥推 Bench Press',    type:'strength', muscle_groups:'上肢', set:1, weight_kg:65,   reps:3, max_weight_kg:65, is_pr:'TRUE',  note:'新PR' },
-    { date:'2026-04-26', exercise_name:'硬舉 Deadlift',       type:'strength', muscle_groups:'全身', set:3, weight_kg:100, reps:5, max_weight_kg:105, is_pr:'FALSE', note:'' },
-    { date:'2026-04-24', exercise_name:'引體向上',             type:'strength', muscle_groups:'上肢', set:4, weight_kg:0,   reps:8, max_weight_kg:0,   is_pr:'FALSE', note:'' },
-    { date:'2026-04-22', exercise_name:'保加利亞分腿蹲',       type:'strength', muscle_groups:'下肢', set:3, weight_kg:30,  reps:10, max_weight_kg:30, is_pr:'FALSE', note:'' },
-    { date:'2026-04-21', exercise_name:'槓鈴划船',             type:'strength', muscle_groups:'背部', set:4, weight_kg:60,  reps:8,  max_weight_kg:65, is_pr:'FALSE', note:'' },
-    { date:'2026-04-19', exercise_name:'肩推 OHP',             type:'strength', muscle_groups:'上肢', set:4, weight_kg:45,  reps:6,  max_weight_kg:47.5, is_pr:'FALSE', note:'' },
-    { date:'2026-04-17', exercise_name:'腿推 Leg Press',       type:'strength', muscle_groups:'下肢', set:4, weight_kg:120, reps:12, max_weight_kg:140, is_pr:'FALSE', note:'' },
-    { date:'2026-04-15', exercise_name:'深蹲 Squat',           type:'strength', muscle_groups:'下肢', set:5, weight_kg:77.5,reps:5,  max_weight_kg:80,  is_pr:'FALSE', note:'' },
-    { date:'2026-04-13', exercise_name:'臥推 Bench Press',     type:'strength', muscle_groups:'上肢', set:4, weight_kg:60,  reps:8,  max_weight_kg:62.5,is_pr:'FALSE', note:'' },
-    { date:'2026-04-11', exercise_name:'硬舉 Deadlift',        type:'strength', muscle_groups:'全身', set:3, weight_kg:97.5,reps:5,  max_weight_kg:100, is_pr:'FALSE', note:'' },
-    { date:'2026-04-09', exercise_name:'引體向上',              type:'strength', muscle_groups:'上肢', set:4, weight_kg:0,   reps:7,  max_weight_kg:0,   is_pr:'FALSE', note:'' },
-  ];
-}
-
-function demoInBody() {
-  return [
-    { date:'2026-04-15', weight_kg:72.5, smm_kg:32.8, body_fat_kg:13.2, body_fat_pct:18.2, bmi:23.1, bmr_kcal:1680 },
-    { date:'2026-03-15', weight_kg:73.8, smm_kg:32.2, body_fat_kg:14.0, body_fat_pct:19.1, bmi:23.5, bmr_kcal:1668 },
-    { date:'2026-02-15', weight_kg:75.2, smm_kg:31.8, body_fat_kg:15.4, body_fat_pct:20.5, bmi:24.0, bmr_kcal:1655 },
-    { date:'2026-01-15', weight_kg:76.0, smm_kg:31.5, body_fat_kg:16.2, body_fat_pct:21.3, bmi:24.3, bmr_kcal:1642 },
-  ];
-}
-
-// ══════════════════════════════════
-//  Init
-// ══════════════════════════════════
-async function initApp() {
-  const today = new Date();
-  document.getElementById('topbar-date').textContent =
-    today.toLocaleDateString('zh-TW', { year:'numeric', month:'long' });
-
-  // fetch or demo
-  const wRaw = await fetchRange('Workout!A:M');
-  const iRaw = await fetchRange('InBody!A:V');
-  const isDemo = !CFG.API_KEY;
-
-  workoutRows = isDemo ? demoWorkout() : parseWorkoutSheet(wRaw);
-  inbodyRows  = isDemo ? demoInBody()  : parseInBodySheet(iRaw);
-
-  if (isDemo) {
-    const notice = `⚠️ 目前為示範模式。設定 API_KEY 後即可顯示真實資料。`;
-    document.getElementById('overview-notice').innerHTML = `<div class="notice">${notice}</div>`;
-    document.getElementById('ib-notice').innerHTML       = `<div class="notice">${notice}</div>`;
+    const res = await axios.get(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`
+    );
+    const models = res.data.models || [];
+    const usable = models
+      .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+      .map(m => m.name);
+    console.log('Available generateContent models:', usable.join(', '));
+  } catch (err) {
+    console.error('Failed to list models:', err.response?.data || err.message);
   }
-
-  renderOverview();
-  renderExercises();
-  renderLog();
-  renderInBody();
 }
 
-// ══════════════════════════════════
-//  Overview
-// ══════════════════════════════════
-function renderOverview() {
-  const now = new Date();
-  const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - now.getDay() + 1);
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  const dateSet = new Set();
-  let weekCount = 0, monthCount = 0;
-  workoutRows.forEach(r => {
-    const d = r.date || '';
-    if (!d) return;
-    const dt = new Date(d);
-    if (!dateSet.has(d)) {
-      dateSet.add(d);
-      if (dt >= startOfWeek) weekCount++;
-      if (dt >= startOfMonth) monthCount++;
-    }
-  });
-  const totalDays = dateSet.size;
-
-  // status
-  const sorted = [...dateSet].sort().reverse();
-  const lastDate = sorted[0] ? new Date(sorted[0]) : null;
-  const daysSince = lastDate ? Math.floor((now - lastDate) / 86400000) : 99;
-  let statusHtml = '<span class="status-pill pill-amber">資料不足</span>';
-  if (daysSince <= 2) statusHtml = '<span class="status-pill pill-green">狀態良好</span>';
-  else if (daysSince <= 5) statusHtml = '<span class="status-pill pill-amber">注意休息</span>';
-
-  document.getElementById('overview-metrics').innerHTML = `
-    <div class="mc"><div class="mc-label">本週訓練</div><div class="mc-val">${weekCount}<span class="mc-unit">次</span></div><div class="mc-delta ${weekCount>=3?'up':'eq'}">${weekCount>=3?'目標達成 ✓':'繼續加油'}</div></div>
-    <div class="mc"><div class="mc-label">本月累積</div><div class="mc-val">${monthCount}<span class="mc-unit">次</span></div><div class="mc-delta up">持續累積中</div></div>
-    <div class="mc"><div class="mc-label">歷史訓練日</div><div class="mc-val">${totalDays}<span class="mc-unit">天</span></div><div class="mc-delta eq">總出席紀錄</div></div>
-    <div class="mc"><div class="mc-label">近況</div><div class="mc-val" style="font-size:13px;padding-top:5px;">${statusHtml}</div></div>
-  `;
-
-  // heatmap — 28 days
-  const hm = document.getElementById('heatmap');
-  hm.innerHTML = '';
-  const trainMap = {};
-  workoutRows.forEach(r => {
-    const d = r.date || '';
-    if (d) trainMap[d] = (trainMap[d] || 0) + 1;
-  });
-  for (let i = 27; i >= 0; i--) {
-    const d = new Date(now); d.setDate(now.getDate() - i);
-    const key = d.toISOString().slice(0,10);
-    const count = trainMap[key] || 0;
-    const lvl = count === 0 ? '' : count <= 2 ? 'l1' : count <= 5 ? 'l2' : 'l3';
-    const div = document.createElement('div');
-    div.className = 'hd ' + lvl;
-    div.title = key + (count ? ` (${count}組)` : '');
-    hm.appendChild(div);
-  }
-
-  // PR list
-  const prs = workoutRows.filter(r => (r.is_pr||'').toUpperCase()==='TRUE');
-  const prMap = {};
-  prs.forEach(r => {
-    const n = r.exercise_name||'';
-    if (!prMap[n] || (r.date||'') > prMap[n].date) prMap[n] = r;
-  });
-  const prArr = Object.values(prMap).sort((a,b) => (b.date||'') < (a.date||'') ? -1 : 1).slice(0,5);
-  document.getElementById('pr-list').innerHTML = prArr.length
-    ? prArr.map(r => `
-      <div class="pr-row">
-        <div><div class="pr-name">${r.exercise_name||''}</div><div class="pr-tag">${r.muscle_groups||''} · ${r.date||''}</div></div>
-        <div class="pr-right">
-          <div class="pr-weight">${r.max_weight_kg||r.weight_kg||0} kg</div>
-          <span class="pr-badge">↑ PR</span>
-        </div>
-      </div>`).join('')
-    : '<div class="empty">尚無 PR 紀錄</div>';
-}
-
-// ══════════════════════════════════
-//  Exercises
-// ══════════════════════════════════
-let allMuscles = [];
-
-function renderExercises() {
-  // gather per-exercise stats
-  const exMap = {};
-  workoutRows.forEach(r => {
-    const name = r.exercise_name || '';
-    if (!name) return;
-    if (!exMap[name]) {
-      exMap[name] = { name, muscle: r.muscle_groups||'', latestDate:'', latestWeight:0, latestReps:0, latestSets:0, bestWeight:0, bestReps:0 };
-    }
-    const e = exMap[name];
-    const d = r.date || '';
-    const w = parseFloat(r.weight_kg || 0);
-    const rp = parseInt(r.reps || 0);
-    if (d > e.latestDate) {
-      e.latestDate = d; e.latestWeight = w; e.latestReps = rp;
-    }
-    if (w > e.bestWeight) { e.bestWeight = w; e.bestReps = rp; }
-    else if (w === e.bestWeight && rp > e.bestReps) e.bestReps = rp;
-  });
-
-  const exArr = Object.values(exMap).sort((a,b) => b.latestDate.localeCompare(a.latestDate));
-  allMuscles = ['全部', ...new Set(exArr.map(e => e.muscle).filter(Boolean))];
-
-  // chips
-  document.getElementById('muscle-chips').innerHTML = allMuscles.map(m =>
-    `<button class="chip${m===activeMuscleFiler?' on':''}" onclick="setMuscleFilter('${m}')">${m}</button>`
-  ).join('');
-
-  renderExTable(exArr);
-}
-
-function setMuscleFilter(m) {
-  activeMuscleFiler = m;
-  document.querySelectorAll('#muscle-chips .chip').forEach(c => {
-    c.className = 'chip' + (c.textContent === m ? ' on' : '');
-  });
-  filterEx();
-}
-
-function filterEx() {
-  const q = (document.getElementById('ex-search').value || '').toLowerCase();
-  const exMap = {};
-  workoutRows.forEach(r => {
-    const name = r.exercise_name || '';
-    if (!name) return;
-    if (!exMap[name]) exMap[name] = { name, muscle: r.muscle_groups||'', latestDate:'', latestWeight:0, latestReps:0, bestWeight:0, bestReps:0 };
-    const e = exMap[name];
-    const d = r.date || '';
-    const w = parseFloat(r.weight_kg || 0);
-    const rp = parseInt(r.reps || 0);
-    if (d > e.latestDate) { e.latestDate = d; e.latestWeight = w; e.latestReps = rp; }
-    if (w > e.bestWeight) { e.bestWeight = w; e.bestReps = rp; }
-  });
-  let arr = Object.values(exMap);
-  if (activeMuscleFiler !== '全部') arr = arr.filter(e => e.muscle === activeMuscleFiler);
-  if (q) arr = arr.filter(e => e.name.toLowerCase().includes(q));
-  renderExTable(arr.sort((a,b) => b.latestDate.localeCompare(a.latestDate)));
-}
-
-function renderExTable(arr) {
-  document.getElementById('ex-table').innerHTML = arr.length
-    ? arr.map(e => {
-        const w = e.latestWeight > 0 ? e.latestWeight + ' kg' : '自重';
-        const bw = e.bestWeight > 0 ? e.bestWeight + ' kg' : '自重';
-        const isAtBest = e.latestWeight >= e.bestWeight;
-        return `
-        <div class="ex-row">
-          <div>
-            <div class="ex-name">${e.name}</div>
-            <div class="ex-meta">${e.muscle} · ${e.latestDate}</div>
-          </div>
-          <div class="ex-right">
-            <div class="ex-cur">${w} × ${e.latestReps}</div>
-            <div class="ex-best ${isAtBest?'hi':''}">最佳 ${bw}</div>
-          </div>
-        </div>`;
-      }).join('')
-    : '<div class="empty">沒有符合的動作</div>';
-}
-
-// ══════════════════════════════════
-//  Log
-// ══════════════════════════════════
-let logMuscles = [];
-
-function renderLog() {
-  logMuscles = ['全部', ...new Set(workoutRows.map(r => r.muscle_groups||'').filter(Boolean))];
-  document.getElementById('log-chips').innerHTML = logMuscles.map(m =>
-    `<button class="chip${m===activeLogFilter?' on':''}" onclick="setLogFilter('${m}')">${m}</button>`
-  ).join('');
-  renderLogList();
-}
-
-function setLogFilter(m) {
-  activeLogFilter = m;
-  document.querySelectorAll('#log-chips .chip').forEach(c => {
-    c.className = 'chip' + (c.textContent === m ? ' on' : '');
-  });
-  renderLogList();
-}
-
-function renderLogList() {
-  let rows = workoutRows;
-  if (activeLogFilter !== '全部') rows = rows.filter(r => r.muscle_groups === activeLogFilter);
-
-  // group by week
-  const weekMap = {};
-  rows.forEach(r => {
-    const d = r.date || '';
-    if (!d) return;
-    const dt = new Date(d);
-    const day = dt.getDay() || 7;
-    const mon = new Date(dt); mon.setDate(dt.getDate() - day + 1);
-    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
-    const wk = mon.toISOString().slice(0,10);
-    if (!weekMap[wk]) weekMap[wk] = { mon, sun, rows:[] };
-    weekMap[wk].rows.push(r);
-  });
-
-  const weeks = Object.keys(weekMap).sort().reverse();
-  if (!weeks.length) { document.getElementById('log-list').innerHTML = '<div class="empty">尚無訓練紀錄</div>'; return; }
-
-  document.getElementById('log-list').innerHTML = weeks.map(wk => {
-    const { mon, sun, rows } = weekMap[wk];
-    const dayCount = new Set(rows.map(r=>r.date)).size;
-    const totalVol = rows.reduce((s,r) => s + (parseFloat(r.weight_kg||0) * parseInt(r.reps||0)), 0);
-    const label = `${mon.getMonth()+1}/${mon.getDate()} – ${sun.getMonth()+1}/${sun.getDate()}`;
-
-    // group by date
-    const dayMap = {};
-    rows.forEach(r => { if (!dayMap[r.date]) dayMap[r.date] = []; dayMap[r.date].push(r); });
-
-    const items = Object.keys(dayMap).sort().reverse().map(date => {
-      const dayRows = dayMap[date];
-      const exMap2 = {};
-      dayRows.forEach(r => {
-        const k = r.exercise_name || '';
-        if (!exMap2[k]) exMap2[k] = { name:k, muscle:r.muscle_groups||'', sets:[], isPR:false, note:'' };
-        exMap2[k].sets.push(r);
-        if ((r.is_pr||'').toUpperCase()==='TRUE') exMap2[k].isPR = true;
-        if (r.note) exMap2[k].note = r.note;
-      });
-      return Object.values(exMap2).map(ex => {
-        const setsNum = ex.sets.length;
-        const maxW = Math.max(...ex.sets.map(s => parseFloat(s.weight_kg||0)));
-        const lastReps = ex.sets[ex.sets.length-1]?.reps || '';
-        const wLabel = maxW > 0 ? maxW + ' kg' : '自重';
-        return '<div class="log-item">' +
-          '<div class="log-top">' +
-            '<div class="log-name">' + ex.name + '</div>' +
-            '<div class="log-date-lbl">' + date.slice(5).replace('-','/') + '</div>' +
-          '</div>' +
-          '<div class="log-detail">' + wLabel + ' × ' + lastReps + '下 × ' + setsNum + '組</div>' +
-          '<div class="log-chips">' +
-            '<span class="log-chip muscle">' + ex.muscle + '</span>' +
-            (ex.isPR ? '<span class="log-chip pr">PR</span>' : '') +
-            (ex.note ? '<span class="log-chip">' + ex.note + '</span>' : '') +
-          '</div>' +
-        '</div>';
-      }).join('');
-    }).join('');
-
-    return `
-      <div class="week-block">
-        <div class="week-head">
-          <div class="week-range">${label}</div>
-          <div class="week-stat">${dayCount}天 · 總量 ${totalVol.toLocaleString()}kg</div>
-        </div>
-        ${items}
-      </div>`;
-  }).join('');
-}
-
-// ══════════════════════════════════
-//  InBody
-// ══════════════════════════════════
-function renderInBody() {
-  if (!inbodyRows.length) {
-    document.getElementById('ib-latest').innerHTML = '<div class="empty">尚無 InBody 紀錄<br>請傳送 InBody 圖片至 LINE Bot</div>';
-    return;
-  }
-
-  const sorted = [...inbodyRows].sort((a,b) => (b.date||'').localeCompare(a.date||''));
-  const latest = sorted[0];
-  const prev   = sorted[1];
-
-  function delta(cur, prv, unit='', inv=false) {
-    if (!prv) return '';
-    const d = parseFloat(cur) - parseFloat(prv);
-    if (isNaN(d)) return '';
-    const good = inv ? d < 0 : d > 0;
-    const cls = good ? 'up' : d === 0 ? 'eq' : 'dn';
-    const arrow = d > 0 ? '↑' : d < 0 ? '↓' : '–';
-    return `<div class="ib-delta ${cls}">${arrow} ${Math.abs(d).toFixed(1)}${unit}</div>`;
-  }
-
-  // status
-  const fatChg = prev ? parseFloat(latest.body_fat_pct) - parseFloat(prev.body_fat_pct) : 0;
-  const mscChg = prev ? parseFloat(latest.smm_kg) - parseFloat(prev.smm_kg) : 0;
-  let statusText = '維持中', statusCls = 'pill-amber';
-  if (mscChg > 0 && fatChg < 0) { statusText = '增肌減脂進行中 🎉'; statusCls = 'pill-green'; }
-  else if (mscChg > 0) { statusText = '肌肉增加中'; statusCls = 'pill-green'; }
-  else if (fatChg < 0) { statusText = '體脂下降中'; statusCls = 'pill-green'; }
-
-  document.getElementById('ib-latest').innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
-      <div style="font-size:15px;font-weight:500;">最新測量</div>
-      <div style="font-size:11px;color:var(--text3);">${latest.date||''}</div>
-    </div>
-    <div class="ib-grid">
-      <div class="ib-item"><div class="ib-label">體重</div><div class="ib-val">${latest.weight_kg}<span class="ib-unit"> kg</span></div>${delta(latest.weight_kg,prev?.weight_kg,' kg',true)}</div>
-      <div class="ib-item"><div class="ib-label">骨骼肌重</div><div class="ib-val">${latest.smm_kg}<span class="ib-unit"> kg</span></div>${delta(latest.smm_kg,prev?.smm_kg,' kg')}</div>
-      <div class="ib-item"><div class="ib-label">體脂率</div><div class="ib-val">${latest.body_fat_pct}<span class="ib-unit"> %</span></div>${delta(latest.body_fat_pct,prev?.body_fat_pct,' %',true)}</div>
-      <div class="ib-item"><div class="ib-label">體脂肪量</div><div class="ib-val">${latest.body_fat_kg}<span class="ib-unit"> kg</span></div>${delta(latest.body_fat_kg,prev?.body_fat_kg,' kg',true)}</div>
-      <div class="ib-item"><div class="ib-label">BMI</div><div class="ib-val">${latest.bmi}</div></div>
-      <div class="ib-item"><div class="ib-label">基礎代謝</div><div class="ib-val">${latest.bmr_kcal}<span class="ib-unit"> kcal</span></div>${delta(latest.bmr_kcal,prev?.bmr_kcal,' kcal')}</div>
-    </div>
-    <div><span class="status-pill ${statusCls}" style="font-size:12px;">${statusText}</span></div>
-  `;
-
-  // chart
-  const chartData = sorted.slice(0,6).reverse();
-  const labels = chartData.map(r => r.date ? r.date.slice(5).replace('-','/') : '');
-  if (ibChart) ibChart.destroy();
-  ibChart = new Chart(document.getElementById('ib-chart'), {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        { label:'體重', data: chartData.map(r=>parseFloat(r.weight_kg)||null), borderColor:'#185fa5', backgroundColor:'rgba(24,95,165,0.07)', borderWidth:2, pointRadius:4, fill:true, tension:0.35, yAxisID:'y' },
-        { label:'骨骼肌', data: chartData.map(r=>parseFloat(r.smm_kg)||null), borderColor:'#3b6d11', backgroundColor:'rgba(59,109,17,0.07)', borderWidth:2, pointRadius:4, fill:true, tension:0.35, yAxisID:'y' },
-        { label:'體脂率', data: chartData.map(r=>parseFloat(r.body_fat_pct)||null), borderColor:'#993c1d', backgroundColor:'rgba(153,60,29,0.06)', borderWidth:2, pointRadius:4, fill:true, tension:0.35, yAxisID:'y2' },
-      ]
-    },
-    options: {
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{ display:false } },
-      scales:{
-        y:{ position:'left', ticks:{ font:{size:10}, callback:v=>v+'kg' }, grid:{ color:'rgba(0,0,0,0.05)' } },
-        y2:{ position:'right', ticks:{ font:{size:10}, callback:v=>v+'%' }, grid:{ display:false } },
-        x:{ ticks:{ font:{size:10} }, grid:{ display:false } }
+// ── Gemini API 呼叫（含自動重試）────────────────────────
+async function callGemini(parts, retries = 3) {
+  const model = 'gemini-2.5-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+  console.log('Calling Gemini model:', model);
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await axios.post(url, { contents: [{ parts }] });
+      return res.data.candidates[0].content.parts[0].text;
+    } catch (err) {
+      const status = err.response?.status;
+      console.error('Gemini attempt', attempt, 'failed, status:', status);
+      if (attempt < retries && [429, 500, 503].includes(status)) {
+        const wait = attempt * 3000;
+        console.log('Retrying in', wait/1000, 's...');
+        await new Promise(r => setTimeout(r, wait));
+        continue;
       }
+      console.error('Gemini error data:', JSON.stringify(err.response?.data));
+      throw err;
+    }
+  }
+}
+
+// ── 解析訓練記錄（文字）─────────────────────────────────
+async function parseWorkout(text) {
+  const prompt = `你是健身訓練記錄解析器。將訓練記錄解析為 JSON 陣列，每個動作一個物件。只回傳 JSON，不要說明文字或 markdown。
+
+解析規則：
+- 日期：從標題取得 M/DD 格式，補上 2026 年，輸出 YYYY-MM-DD
+- 部位標籤：括號內以空格分隔的詞，輸出陣列
+- 動作類型：力量(strength) / 間歇(cardio) / 暖身(warmup) / 複合(complex)
+- 重量標準化：空重=0kg、單邊Xlbs=X*0.453592kg、Xkg直接用、Xlbs=X*0.453592
+- sets 陣列：每組 { set:組數, weight_kg:數字或null, reps:次數或null, duration_sec:秒數或null, resistance:阻力或null }
+- max_weight_kg：本次最重的重量
+- is_pr：備註含「進步」或「讚」則 true
+- is_skipped：備註含「pass」則 true，sets 為空陣列
+- superset_group：備註含「超級組N」則填數字
+- note：其他括號備註文字
+- muscle_groups：從部位標籤和動作名稱判斷
+
+回傳格式：
+[
+  {
+    "date": "2026-04-27",
+    "muscle_groups": ["背","腿"],
+    "exercise_name": "完整動作名稱",
+    "type": "strength",
+    "sets": [{"set":1,"weight_kg":45,"reps":12,"duration_sec":null,"resistance":null}],
+    "max_weight_kg": 45,
+    "is_pr": false,
+    "is_skipped": false,
+    "superset_group": null,
+    "note": ""
+  }
+]
+
+訓練記錄：
+${text}`;
+
+  const raw = await callGemini([{ text: prompt }]);
+  const clean = raw.replace(/```json|```/g, '').trim();
+  return JSON.parse(clean);
+}
+
+// ── 解析 InBody 圖片 ───────────────────────────────────
+async function parseInBody(imageBase64, mimeType) {
+  const prompt = `你是 InBody 體成分報告解析專家。請仔細分析這張 InBody 報告圖片，擷取所有可見數值。
+
+重要規則：
+- 只回傳純 JSON，不要任何說明文字、markdown 符號或 \`\`\`
+- 看不到的欄位填 null，不要猜測
+- 體脂率填數字（例如 18.5，不含 % 符號）
+- 日期若報告中沒有，填今天日期
+- 如果圖片不是 InBody 報告，回傳 {"error": "非InBody報告"}
+
+回傳格式：
+{
+  "date": "YYYY-MM-DD",
+  "weight_kg": 體重數值,
+  "smm_kg": 骨骼肌重,
+  "body_fat_kg": 體脂肪重,
+  "body_fat_pct": 體脂率數字,
+  "ffm_kg": 除脂體重,
+  "bmi": BMI數值,
+  "whr": 腰臀圍比,
+  "bmr_kcal": 基礎代謝率,
+  "tbw_kg": 身體總水量,
+  "protein_kg": 蛋白質重,
+  "mineral_kg": 礦物質重,
+  "icw_kg": 細胞內水分,
+  "ecw_kg": 細胞外水分,
+  "visceral_fat_level": 內臟脂肪等級數字,
+  "fitness_score": 健身評分數字,
+  "muscle_control_kg": 肌肉控制數值,
+  "fat_control_kg": 脂肪控制數值,
+  "segmental_muscle": {
+    "right_arm_kg": null,
+    "left_arm_kg": null,
+    "trunk_kg": null,
+    "right_leg_kg": null,
+    "left_leg_kg": null
+  },
+  "segmental_fat_pct": {
+    "right_arm_pct": null,
+    "left_arm_pct": null,
+    "trunk_pct": null,
+    "right_leg_pct": null,
+    "left_leg_pct": null
+  }
+}`;
+
+  // ✅ 修正：prompt 文字在前，圖片在後（Gemini 2.5 正確順序）
+  const raw = await callGemini([
+    { text: prompt },
+    { inline_data: { mime_type: mimeType, data: imageBase64 } }
+  ]);
+
+  // ✅ 修正：更強健的 JSON 清理
+  let clean = raw.trim();
+  // 移除 ```json ... ``` 或 ``` ... ```
+  clean = clean.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  // 只取第一個 { 到最後一個 } 之間的內容
+  const start = clean.indexOf('{');
+  const end = clean.lastIndexOf('}');
+  if (start !== -1 && end !== -1) {
+    clean = clean.slice(start, end + 1);
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(clean);
+  } catch (jsonErr) {
+    console.error('InBody JSON parse 失敗，原始回傳：', raw);
+    throw new Error(`Gemini 回傳無法解析為 JSON：${raw.slice(0, 200)}`);
+  }
+
+  if (parsed.error) {
+    throw new Error(parsed.error);
+  }
+
+  return parsed;
+}
+
+// ── Google Sheets 認證 ─────────────────────────────────
+async function getSheetsClient() {
+  const auth = new google.auth.GoogleAuth({
+    credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+  return google.sheets({ version: 'v4', auth });
+}
+
+// ── 寫入訓練記錄 ───────────────────────────────────────
+async function writeWorkoutToSheets(exercises) {
+  const sheets = await getSheetsClient();
+  const rows = [];
+  for (const ex of exercises) {
+    if (ex.is_skipped) {
+      rows.push([
+        ex.date, ex.exercise_name, ex.type,
+        (ex.muscle_groups || []).join(', '),
+        0, '', '', '', '', 'FALSE', 'TRUE', ex.note || ''
+      ]);
+      continue;
+    }
+    for (const s of (ex.sets || [])) {
+      rows.push([
+        ex.date,
+        ex.exercise_name,
+        ex.type,
+        (ex.muscle_groups || []).join(', '),
+        s.set,
+        s.weight_kg ?? '',
+        s.reps ?? '',
+        s.duration_sec ?? '',
+        ex.max_weight_kg ?? '',
+        ex.is_pr ? 'TRUE' : 'FALSE',
+        'FALSE',
+        ex.note || '',
+        ex.superset_group ?? ''
+      ]);
+    }
+  }
+  if (rows.length === 0) return;
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SHEET_ID,
+    range: 'Workout!A:M',
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: rows },
+  });
+}
+
+// ── 寫入 InBody ────────────────────────────────────────
+async function writeInBodyToSheets(d) {
+  const sheets = await getSheetsClient();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SHEET_ID,
+    range: 'InBody!A:V',
+    valueInputOption: 'USER_ENTERED',
+    requestBody: {
+      values: [[
+        d.date, d.weight_kg, d.smm_kg, d.body_fat_kg, d.body_fat_pct,
+        d.ffm_kg, d.bmi, d.whr, d.bmr_kcal, d.tbw_kg,
+        d.protein_kg, d.mineral_kg, d.icw_kg, d.ecw_kg,
+        d.visceral_fat_level, d.fitness_score,
+        d.muscle_control_kg, d.fat_control_kg,
+        d.segmental_muscle?.trunk_kg ?? '',
+        d.segmental_fat_pct?.trunk_pct ?? '',
+        d.segmental_muscle?.right_leg_kg ?? '',
+        d.segmental_muscle?.left_leg_kg ?? ''
+      ]]
     }
   });
 }
-</script>
-</body>
-</html>
+
+// ── 回覆 LINE 訊息 ─────────────────────────────────────
+async function replyLine(replyToken, text) {
+  await axios.post('https://api.line.me/v2/bot/message/reply', {
+    replyToken,
+    messages: [{ type: 'text', text }]
+  }, {
+    headers: { Authorization: `Bearer ${LINE_ACCESS_TOKEN}` }
+  });
+}
+
+// ── 下載 LINE 圖片 ─────────────────────────────────────
+async function downloadLineImage(messageId) {
+  const res = await axios.get(
+    `https://api-data.line.me/v2/bot/message/${messageId}/content`,
+    {
+      headers: { Authorization: `Bearer ${LINE_ACCESS_TOKEN}` },
+      responseType: 'arraybuffer'
+    }
+  );
+  return Buffer.from(res.data).toString('base64');
+}
+
+// ── Webhook 主入口 ─────────────────────────────────────
+app.post('/webhook', async (req, res) => {
+  const signature = req.headers['x-line-signature'];
+  if (!verifySignature(req.body, signature)) {
+    return res.sendStatus(403);
+  }
+
+  res.sendStatus(200);
+
+  let body;
+  try { body = JSON.parse(req.body.toString()); } catch { return; }
+
+  for (const event of (body.events || [])) {
+    if (event.type !== 'message') continue;
+    const { replyToken, message } = event;
+
+    try {
+      // 📷 圖片 → InBody 解析
+      if (message.type === 'image') {
+        const base64 = await downloadLineImage(message.id);
+        const inbody = await parseInBody(base64, 'image/jpeg');
+        await writeInBodyToSheets(inbody);
+        await replyLine(replyToken,
+          `📊 InBody 已記錄！${inbody.date}\n` +
+          `體重 ${inbody.weight_kg}kg｜體脂 ${inbody.body_fat_pct}%\n` +
+          `骨骼肌 ${inbody.smm_kg}kg｜健身評分 ${inbody.fitness_score}\n` +
+          `內臟脂肪 ${inbody.visceral_fat_level} 級`
+        );
+        continue;
+      }
+
+      // 📝 文字 → 訓練記錄解析
+      if (message.type === 'text') {
+        const text = message.text;
+        if (!text.includes('訓練記錄') && !text.match(/\d+\/\d+/)) continue;
+
+        const exercises = await parseWorkout(text);
+        await writeWorkoutToSheets(exercises);
+
+        const prList = exercises.filter(e => e.is_pr).map(e => `🎉 ${e.exercise_name}`);
+        const skipped = exercises.filter(e => e.is_skipped).map(e => `⏭ ${e.exercise_name}`);
+        const normal = exercises.filter(e => !e.is_pr && !e.is_skipped).map(e => `• ${e.exercise_name}`);
+        const date = exercises[0]?.date || '';
+        const muscles = [...new Set(exercises.flatMap(e => e.muscle_groups || []))].join(' ');
+
+        await replyLine(replyToken,
+          `✅ ${date} 訓練已記錄！\n部位：${muscles}\n\n` +
+          [...prList, ...normal, ...skipped].join('\n')
+        );
+      }
+    } catch (err) {
+      console.error('處理訊息失敗:', err.message);
+      try {
+        const isImage = message.type === 'image';
+        const hint = isImage
+          ? `⚠️ InBody 解析失敗
+原因：${err.message}
+
+請確認：
+1. 圖片是否為 InBody 報告
+2. 圖片是否清晰完整`
+          : `⚠️ 訓練記錄解析失敗
+原因：${err.message}`;
+        await replyLine(replyToken, hint);
+      } catch {}
+    }
+  }
+});
+
+app.get('/', (req, res) => res.send('宛諭健身 Bot 運作中 💪'));
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => { console.log(`Bot running on port ${PORT}`); listModels(); });
