@@ -454,6 +454,39 @@ async function fetchRange(range) {
   } catch { return null; }
 }
 
+function parseWorkoutSheet(rows) {
+  if (!rows || rows.length < 1) return [];
+  return rows.map(r => ({
+    date:           r[0] ?? '',
+    exercise_name:  r[1] ?? '',
+    type:           r[2] ?? '',
+    muscle_groups:  r[3] ?? '',
+    set:            r[4] ?? '',
+    weight_kg:      r[5] ?? '',
+    reps:           r[6] ?? '',
+    duration_sec:   r[7] ?? '',
+    max_weight_kg:  r[8] ?? '',
+    is_pr:          r[9] ?? 'FALSE',
+    is_skipped:     r[10] ?? 'FALSE',
+    note:           r[11] ?? '',
+    superset_group: r[12] ?? '',
+  }));
+}
+
+function parseInBodySheet(rows) {
+  if (!rows || rows.length < 1) return [];
+  return rows.map(r => ({
+    date:         r[0] ?? '',
+    weight_kg:    parseFloat(r[1]) || 0,
+    smm_kg:       parseFloat(r[2]) || 0,
+    body_fat_kg:  parseFloat(r[3]) || 0,
+    body_fat_pct: parseFloat(r[4]) || 0,
+    ffm_kg:       parseFloat(r[5]) || 0,
+    bmi:          parseFloat(r[6]) || 0,
+    bmr_kcal:     parseFloat(r[8]) || 0,
+  }));
+}
+
 function parseSheet(rows) {
   if (!rows || rows.length < 2) return [];
   const h = rows[0];
@@ -508,16 +541,8 @@ async function initApp() {
   const iRaw = await fetchRange('InBody!A:V');
   const isDemo = !CFG.API_KEY;
 
-  workoutRows = isDemo ? demoWorkout() : parseSheet(wRaw);
-  inbodyRows  = isDemo ? demoInBody()  : parseSheet(iRaw).map(r => ({
-    date: r.date || r['日期'] || '',
-    weight_kg:    parseFloat(r.weight_kg    || r['體重']     || 0),
-    smm_kg:       parseFloat(r.smm_kg       || r['骨骼肌重'] || 0),
-    body_fat_kg:  parseFloat(r.body_fat_kg  || r['體脂肪重'] || 0),
-    body_fat_pct: parseFloat(r.body_fat_pct || r['體脂率']   || 0),
-    bmi:          parseFloat(r.bmi          || r['BMI']      || 0),
-    bmr_kcal:     parseFloat(r.bmr_kcal     || r['基礎代謝'] || 0),
-  }));
+  workoutRows = isDemo ? demoWorkout() : parseWorkoutSheet(wRaw);
+  inbodyRows  = isDemo ? demoInBody()  : parseInBodySheet(iRaw);
 
   if (isDemo) {
     const notice = `⚠️ 目前為示範模式。設定 API_KEY 後即可顯示真實資料。`;
