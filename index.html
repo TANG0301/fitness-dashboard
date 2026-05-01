@@ -166,7 +166,7 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
       <div class="metric-grid" id="overview-metrics">
         <div class="mc"><div class="mc-label">本月運動次數</div><div class="mc-val">—</div></div>
         <div class="mc"><div class="mc-label">最新體重</div><div class="mc-val">—</div></div>
-        <div class="mc"><div class="mc-label">最新體脂</div><div class="mc-val">—</div></div>
+        <div class="mc"><div class="mc-label">最新體脂率</div><div class="mc-val">—</div></div>
         <div class="mc"><div class="mc-label">近況</div><div class="mc-val" style="font-size:13px;padding-top:5px;">—</div></div>
       </div>
       <div class="card">
@@ -187,10 +187,10 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
       </div>
       <div class="card">
         <div class="sec-title">InBody 趨勢</div>
-        <div class="chart-legends">
-          <div class="legend-item"><div class="legend-dot" style="background:#185fa5;"></div>體重 (kg)</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#3b6d11;"></div>骨骼肌 (kg)</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#993c1d;"></div>體脂率 (%)</div>
+        <div class="chart-legends" style="margin-bottom:8px;">
+          <div class="legend-item"><div class="legend-dot" style="background:#185fa5;"></div>體重</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#3b6d11;"></div>骨骼肌</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#993c1d;"></div>體脂率</div>
         </div>
         <div class="chart-wrap"><canvas id="overview-ib-chart"></canvas></div>
       </div>
@@ -261,16 +261,15 @@ const CATS = ['全部','臀腿','肩背胸','核心','心肺','有氧'];
 
 function classifyMuscle(raw) {
   if (!raw) return '有氧';
-  const r = raw;
-  if (r.includes('腿') || r.includes('臀')) return '臀腿';
-  if (r.includes('背') || r.includes('胸') || r.includes('肩') || r.includes('頭')) return '肩背胸';
-  if (r.includes('核心') || r.includes('腹')) return '核心';
-  if (r.includes('心肺')) return '心肺';
+  if (raw.includes('心肺')) return '心肺';
+  if (raw.includes('腿') || raw.includes('臀')) return '臀腿';
+  if (raw.includes('背') || raw.includes('胸') || raw.includes('肩') || raw.includes('頭')) return '肩背胸';
+  if (raw.includes('核心') || raw.includes('腹')) return '核心';
   return '有氧';
 }
 
 let workoutRows = [], inbodyRows = [];
-let ibChart = null, overviewIbChart = null;
+let ibChart = null;
 let activeMuscleFilter = '全部', activeLogFilter = '全部';
 let initialized = false;
 
@@ -369,9 +368,22 @@ function renderOverview() {
 
   const lastDate = dateSet.size ? [...dateSet].sort().reverse()[0] : null;
   const daysSince = lastDate ? Math.floor((now-new Date(lastDate))/86400000) : 99;
-  let statusHtml = '<span class="status-pill pill-amber">資料不足</span>';
-  if (daysSince<=2) statusHtml='<span class="status-pill pill-green">狀態良好</span>';
-  else if (daysSince<=5) statusHtml='<span class="status-pill pill-amber">注意休息</span>';
+  // 計算本週訓練次數
+  const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate()-now.getDay()+1); startOfWeek.setHours(0,0,0,0);
+  const weekDays = [...dateSet].filter(d=>new Date(d)>=startOfWeek).length;
+  let statusHtml, statusCls;
+  if (!lastDate) {
+    statusHtml='開始你的第一次訓練吧！'; statusCls='pill-amber';
+  } else if (daysSince===0) {
+    statusHtml='今天有訓練，繼續保持！'; statusCls='pill-green';
+  } else if (daysSince===1) {
+    statusHtml='昨天有訓練，今天可休息或輕度活動'; statusCls='pill-green';
+  } else if (daysSince<=3) {
+    statusHtml='距上次訓練 '+daysSince+' 天，是時候動了！'; statusCls='pill-amber';
+  } else {
+    statusHtml='已 '+daysSince+' 天未訓練，快回來！'; statusCls='pill-amber';
+  }
+  const statusFull='<span class="status-pill '+statusCls+'" style="font-size:11px;padding:4px 8px;">'+statusHtml+'</span>';
 
   function dval(cur,p,unit,inv) {
     if (!p) return '';
@@ -380,12 +392,11 @@ function renderOverview() {
     return `<div class="mc-delta ${cls}">${parseFloat(d)>0?'+':''}${d}${unit}</div>`;
   }
 
-  document.getElementById('overview-metrics').innerHTML = `
-    <div class="mc"><div class="mc-label">本月運動次數</div><div class="mc-val">${monthCount}<span class="mc-unit">次</span></div></div>
-    <div class="mc"><div class="mc-label">最新體重</div><div class="mc-val">${lat?lat.weight_kg:'--'}<span class="mc-unit"> kg</span></div>${lat?dval(lat.weight_kg,prv?.weight_kg,' kg',true):''}</div>
-    <div class="mc"><div class="mc-label">最新體脂</div><div class="mc-val">${lat?lat.body_fat_pct:'--'}<span class="mc-unit"> %</span></div>${lat?dval(lat.body_fat_pct,prv?.body_fat_pct,' %',true):''}</div>
-    <div class="mc"><div class="mc-label">近況</div><div class="mc-val" style="font-size:13px;padding-top:5px;">${statusHtml}</div></div>
-  `;
+  document.getElementById('overview-metrics').innerHTML =
+    '<div class="mc"><div class="mc-label">本月運動次數</div><div class="mc-val">'+monthCount+'<span class="mc-unit">次</span></div><div class="mc-delta eq">本週 '+weekDays+' 天</div></div>'+
+    '<div class="mc"><div class="mc-label">最新體重</div><div class="mc-val">'+(lat?lat.weight_kg:'--')+'<span class="mc-unit"> kg</span></div>'+(lat?dval(lat.weight_kg,prv?.weight_kg,' kg',true):'')+'</div>'+
+    '<div class="mc"><div class="mc-label">最新體脂</div><div class="mc-val">'+(lat?lat.body_fat_pct:'--')+'<span class="mc-unit"> %</span></div>'+(lat?dval(lat.body_fat_pct,prv?.body_fat_pct,' %',true):'')+'</div>'+
+    '<div class="mc" style="grid-column:span 2;"><div class="mc-label" style="margin-bottom:6px;">近況提示</div>'+statusFull+'</div>';
 
   // heatmap
   const hm = document.getElementById('heatmap');
@@ -415,18 +426,22 @@ function renderOverview() {
       </div>`).join('')
     : '<div class="empty">尚無 PR 紀錄</div>';
 
-  // overview InBody chart
-  const cd=[...inbodyRows].sort((a,b)=>a.date.localeCompare(b.date)).slice(-6);
-  const el=document.getElementById('overview-ib-chart');
-  if (cd.length&&el) {
-    if (overviewIbChart) overviewIbChart.destroy();
-    overviewIbChart=new Chart(el,{type:'line',data:{
-      labels:cd.map(r=>r.date.slice(5).replace('-','/')),
-      datasets:[
-        {data:cd.map(r=>r.weight_kg||null),borderColor:'#185fa5',backgroundColor:'rgba(24,95,165,0.07)',borderWidth:2,pointRadius:3,fill:true,tension:0.35,yAxisID:'y'},
-        {data:cd.map(r=>r.smm_kg||null),borderColor:'#3b6d11',backgroundColor:'rgba(59,109,17,0.07)',borderWidth:2,pointRadius:3,fill:true,tension:0.35,yAxisID:'y'},
-        {data:cd.map(r=>r.body_fat_pct||null),borderColor:'#993c1d',backgroundColor:'rgba(153,60,29,0.05)',borderWidth:2,pointRadius:3,fill:true,tension:0.35,yAxisID:'y2'},
-      ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+  // overview InBody line chart
+  const overviewChartEl = document.getElementById('overview-ib-chart');
+  if (overviewChartEl && inbodyRows.length) {
+    const cd = [...inbodyRows].sort((a,b)=>a.date.localeCompare(b.date)).slice(-6);
+    if (window._overviewIbChart) window._overviewIbChart.destroy();
+    window._overviewIbChart = new Chart(overviewChartEl, {
+      type:'line',
+      data:{
+        labels: cd.map(r=>r.date.slice(5).replace('-','/')),
+        datasets:[
+          {data:cd.map(r=>r.weight_kg||null),borderColor:'#185fa5',backgroundColor:'rgba(24,95,165,0.07)',borderWidth:2,pointRadius:3,fill:true,tension:0.35,yAxisID:'y'},
+          {data:cd.map(r=>r.smm_kg||null),borderColor:'#3b6d11',backgroundColor:'rgba(59,109,17,0.07)',borderWidth:2,pointRadius:3,fill:true,tension:0.35,yAxisID:'y'},
+          {data:cd.map(r=>r.body_fat_pct||null),borderColor:'#993c1d',backgroundColor:'rgba(153,60,29,0.05)',borderWidth:2,pointRadius:3,fill:true,tension:0.35,yAxisID:'y2'},
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
         scales:{
           y:{position:'left',ticks:{font:{size:10},callback:v=>v+'kg'},grid:{color:'rgba(0,0,0,0.05)'}},
           y2:{position:'right',ticks:{font:{size:10},callback:v=>v+'%'},grid:{display:false}},
