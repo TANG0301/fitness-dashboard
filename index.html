@@ -310,10 +310,10 @@
     <div class="screen on" id="s0">
       <div id="overview-notice"></div>
       <div class="metric-grid" id="overview-metrics">
-        <div class="mc"><div class="mc-label">本週訓練</div><div class="mc-val">—</div></div>
-        <div class="mc"><div class="mc-label">本月累積</div><div class="mc-val">—</div></div>
-        <div class="mc"><div class="mc-label">總訓練次數</div><div class="mc-val">—</div></div>
-        <div class="mc"><div class="mc-label">最近狀態</div><div class="mc-val" style="font-size:14px;padding-top:6px;">—</div></div>
+        <div class="mc"><div class="mc-label">本月運動次數</div><div class="mc-val">—</div></div>
+        <div class="mc"><div class="mc-label">最新體重</div><div class="mc-val">—</div></div>
+        <div class="mc"><div class="mc-label">最新體脂</div><div class="mc-val">—</div></div>
+        <div class="mc"><div class="mc-label">近況</div><div class="mc-val" style="font-size:13px;padding-top:5px;">—</div></div>
       </div>
 
       <div class="card">
@@ -333,6 +333,400 @@
         </div>
       </div>
 
+      <div class="card">
+        <div class="sec-title">InBody 趨勢</div>
+        <div class="chart-legends">
+          <div class="legend-item"><div class="legend-dot" style="background:#185fa5;"></div>體重</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#3b6d11;"></div>骨骼肌</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#993c1d;"></div>體脂率</div>
+        </div>
+        <div class="chart-wrap"><canvas id="overview-ib-chart"></canvas></div>
+      </div>
+      <div class="card" id="pr-card">
+        <div class="sec-title">近期 PR 突破</div>
+        <div id="pr-list"><div class="empty">載入中...</div></div>
+      </div>
+    </div>
+
+    <!-- 動作 -->
+    <div class="screen" id="s1">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input class="search-input" id="ex-search" placeholder="搜尋動作名稱..." oninput="filterEx()" />
+      </div>
+      <div class="chips" id="muscle-chips"></div>
+      <div class="card" style="padding:8px 14px;" id="ex-table">
+        <div class="empty">載入中...</div>
+      </div>
+    </div>
+
+    <!-- 日誌 -->
+    <div class="screen" id="s2">
+      <div class="chips" id="log-chips"></div>
+      <div id="log-list"><div class="empty">載入中...</div></div>
+    </div>
+
+    <!-- InBody -->
+    <div class="screen" id="s3">
+      <div id="ib-notice"></div>
+      <div class="card" id="ib-latest">
+        <div class="empty">載入中...</div>
+      </div>
+      <div class="card">
+        <div class="sec-title">趨勢圖</div>
+        <div class="chart-legends" id="ib-legends">
+          <div class="legend-item"><div class="legend-dot" style="background:#185fa5;"></div>體重 (kg)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#3b6d11;"></div>骨骼肌 (kg)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#993c1d;"></div>體脂率 (%)</div>
+        </div>
+        <div class="chart-wrap"><canvas id="ib-chart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottomnav">
+    <button class="nav-btn on" id="n0" onclick="switchTab(0)"><span class="nav-ico">◈</span><span class="nav-lbl">總覽</span></button>
+    <button class="nav-btn" id="n1" onclick="switchTab(1)"><span class="nav-ico">≡</span><span class="nav-lbl">動作</span></button>
+    <button class="nav-btn" id="n2" onclick="switchTab(2)"><span class="nav-ico">📅</span><span class="nav-lbl">日誌</span></button>
+    <button class="nav-btn" id="n3" onclick="switchTab(3)"><span class="nav-ico">◉</span><span class="nav-lbl">InBody</span></button>
+  </div>
+</div>
+
+<style>
+  :root {
+    --bg: #f2f0ea;
+    --surface: #ffffff;
+    --surface2: #f7f5f0;
+    --border: #e8e5de;
+    --border2: #d8d4cb;
+    --text: #1a1816;
+    --text2: #6b6660;
+    --text3: #aaa69e;
+    --green: #3b6d11;
+    --green-bg: #eaf3de;
+    --red: #a32d2d;
+    --red-bg: #fcebeb;
+    --blue: #185fa5;
+    --blue-bg: #e6f1fb;
+    --amber: #854f0b;
+    --amber-bg: #faeeda;
+    --radius: 14px;
+    --radius-sm: 9px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text); overscroll-behavior: none; }
+
+  /* ── Login ── */
+  #login {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 2rem;
+    background: var(--bg);
+  }
+  .login-mark {
+    width: 56px; height: 56px; border-radius: 16px;
+    background: var(--text); color: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; margin-bottom: 1.5rem;
+    font-family: 'DM Mono', monospace;
+  }
+  .login-title { font-size: 19px; font-weight: 500; margin-bottom: 4px; }
+  .login-sub { font-size: 13px; color: var(--text2); margin-bottom: 2rem; }
+  .login-input {
+    width: 100%; max-width: 300px;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 11px 14px;
+    font-size: 15px; font-family: 'DM Sans', sans-serif;
+    background: var(--surface); color: var(--text);
+    display: block; margin-bottom: 10px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .login-input:focus { border-color: var(--text); }
+  .login-btn {
+    width: 100%; max-width: 300px;
+    padding: 11px;
+    background: var(--text); color: var(--bg);
+    border: none; border-radius: var(--radius-sm);
+    font-size: 15px; font-weight: 500; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: opacity .15s;
+  }
+  .login-btn:active { opacity: .75; }
+  .login-err { font-size: 13px; color: var(--red); margin-top: 8px; min-height: 18px; text-align: center; max-width: 300px; }
+
+  /* ── App shell ── */
+  #app { display: none; height: 100vh; flex-direction: column; overflow: hidden; }
+
+  .topbar {
+    background: var(--bg);
+    padding: 52px 18px 10px;
+    display: flex; align-items: flex-end; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .topbar-name { font-size: 22px; font-weight: 500; letter-spacing: -.4px; }
+  .topbar-date { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .logout-btn {
+    font-size: 12px; color: var(--text2);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 5px 12px; cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .tabs {
+    display: flex; background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    padding: 0 6px;
+  }
+  .tab {
+    flex: 1; padding: 10px 4px;
+    font-size: 13px; font-weight: 500;
+    color: var(--text3); text-align: center;
+    border-bottom: 2px solid transparent;
+    cursor: pointer; transition: color .15s, border-color .15s;
+    background: none; border-left: none; border-right: none; border-top: none;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .tab.on { color: var(--text); border-bottom-color: var(--text); }
+
+  .screens { flex: 1; overflow: hidden; position: relative; }
+  .screen {
+    display: none; position: absolute; inset: 0;
+    overflow-y: auto; padding: 14px 14px 80px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .screen.on { display: block; }
+
+  /* ── Components ── */
+  .metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-bottom: 12px; }
+  .mc {
+    background: var(--surface); border-radius: var(--radius-sm);
+    border: 1px solid var(--border); padding: 12px 14px;
+  }
+  .mc-label { font-size: 11px; color: var(--text3); margin-bottom: 5px; }
+  .mc-val { font-size: 24px; font-weight: 500; line-height: 1; }
+  .mc-unit { font-size: 12px; color: var(--text2); margin-left: 2px; }
+  .mc-delta { font-size: 11px; margin-top: 4px; }
+  .up { color: var(--green); } .dn { color: var(--red); } .eq { color: var(--text3); }
+
+  .card {
+    background: var(--surface); border-radius: var(--radius);
+    border: 1px solid var(--border); padding: 14px;
+    margin-bottom: 10px;
+  }
+  .sec-title {
+    font-size: 11px; font-weight: 500; color: var(--text3);
+    letter-spacing: .05em; text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  /* heatmap */
+  .week-labels { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; margin-bottom: 4px; }
+  .wl { font-size: 9px; color: var(--text3); text-align: center; }
+  .heatmap { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+  .hd { height: 30px; border-radius: 5px; background: var(--surface2); }
+  .hd.l1 { background: #c7e6b8; }
+  .hd.l2 { background: #7fbe4e; }
+  .hd.l3 { background: #3b6d11; }
+
+  /* pr list */
+  .pr-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 0; border-bottom: 1px solid var(--surface2);
+  }
+  .pr-row:last-child { border-bottom: none; }
+  .pr-name { font-size: 13px; font-weight: 500; }
+  .pr-tag { font-size: 10px; color: var(--text3); margin-top: 2px; }
+  .pr-right { text-align: right; }
+  .pr-weight { font-size: 14px; font-weight: 500; }
+  .pr-badge {
+    display: inline-block; font-size: 10px; padding: 2px 7px;
+    border-radius: 20px; margin-top: 2px;
+    background: var(--green-bg); color: var(--green);
+  }
+
+  /* exercise table */
+  .search-wrap { position: relative; margin-bottom: 10px; }
+  .search-input {
+    width: 100%; border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px 9px 36px;
+    font-size: 13px; font-family: 'DM Sans', sans-serif;
+    background: var(--surface); color: var(--text);
+    outline: none; transition: border-color .15s;
+  }
+  .search-input:focus { border-color: var(--text); }
+  .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 14px; color: var(--text3); }
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 10px; }
+  .chip {
+    padding: 5px 13px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    white-space: nowrap; border: 1px solid var(--border2); color: var(--text2);
+    background: var(--surface); cursor: pointer; transition: all .15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .chip.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .chips::-webkit-scrollbar { display: none; }
+
+  .ex-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid var(--surface2);
+  }
+  .ex-row:last-child { border-bottom: none; }
+  .ex-name { font-size: 13px; font-weight: 500; }
+  .ex-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .ex-right { text-align: right; }
+  .ex-cur { font-size: 13px; font-weight: 500; }
+  .ex-best { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .ex-best.hi { color: var(--green); }
+
+  /* log */
+  .week-block { margin-bottom: 16px; }
+  .week-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .week-range { font-size: 13px; font-weight: 500; }
+  .week-stat { font-size: 11px; color: var(--text3); }
+  .log-item {
+    background: var(--surface); border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    padding: 10px 12px; margin-bottom: 6px;
+  }
+  .log-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .log-name { font-size: 13px; font-weight: 500; }
+  .log-date-lbl { font-size: 11px; color: var(--text3); margin-top: 1px; }
+  .log-detail { font-size: 12px; color: var(--text2); margin-top: 4px; }
+  .log-chips { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+  .log-chip {
+    font-size: 10px; padding: 2px 8px; border-radius: 20px;
+    background: var(--surface2); color: var(--text2);
+  }
+  .log-chip.muscle { background: var(--green-bg); color: var(--green); }
+  .log-chip.pr { background: var(--amber-bg); color: var(--amber); }
+
+  /* inbody */
+  .ib-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-bottom: 12px; }
+  .ib-item { background: var(--surface2); border-radius: var(--radius-sm); padding: 11px 13px; }
+  .ib-label { font-size: 10px; color: var(--text3); margin-bottom: 4px; }
+  .ib-val { font-size: 20px; font-weight: 500; line-height: 1; }
+  .ib-unit { font-size: 11px; color: var(--text2); }
+  .ib-delta { font-size: 11px; margin-top: 3px; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 12px; border-radius: 20px;
+    font-size: 12px; font-weight: 500;
+  }
+  .pill-green { background: var(--green-bg); color: var(--green); }
+  .pill-amber { background: var(--amber-bg); color: var(--amber); }
+
+  .chart-legends { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .chart-wrap { position: relative; height: 180px; }
+
+  /* bottom nav */
+  .bottomnav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 64px; background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex; padding: 0 8px;
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 100;
+  }
+  .nav-btn {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3px;
+    cursor: pointer; background: none; border: none;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .nav-ico { font-size: 20px; line-height: 1; }
+  .nav-lbl { font-size: 10px; color: var(--text3); font-weight: 500; }
+  .nav-btn.on .nav-lbl { color: var(--text); }
+
+  /* empty */
+  .empty { text-align: center; padding: 2.5rem 1rem; color: var(--text3); font-size: 13px; }
+
+  /* config notice */
+  .notice {
+    background: var(--amber-bg); border: 1px solid #d4a840;
+    border-radius: var(--radius-sm); padding: 10px 13px;
+    font-size: 12px; color: var(--amber); margin-bottom: 12px;
+    line-height: 1.5;
+  }
+
+  @media (min-width: 480px) {
+    #app { max-width: 430px; margin: 0 auto; }
+    .bottomnav { max-width: 430px; left: 50%; transform: translateX(-50%); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Login ── -->
+<div id="login">
+  <div class="login-mark">W</div>
+  <p class="login-title">宛諭的訓練追蹤</p>
+  <p class="login-sub">請輸入密碼繼續</p>
+  <input class="login-input" type="password" id="pw" placeholder="密碼" autocomplete="current-password" />
+  <button class="login-btn" onclick="doLogin()">進入</button>
+  <p class="login-err" id="login-err"></p>
+</div>
+
+<!-- ── App ── -->
+<div id="app">
+  <div class="topbar">
+    <div>
+      <div class="topbar-name" id="topbar-name">載入中...</div>
+      <div class="topbar-date" id="topbar-date"></div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">登出</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" id="t0" onclick="switchTab(0)">總覽</button>
+    <button class="tab" id="t1" onclick="switchTab(1)">動作</button>
+    <button class="tab" id="t2" onclick="switchTab(2)">日誌</button>
+    <button class="tab" id="t3" onclick="switchTab(3)">InBody</button>
+  </div>
+
+  <div class="screens">
+    <!-- 總覽 -->
+    <div class="screen on" id="s0">
+      <div id="overview-notice"></div>
+      <div class="metric-grid" id="overview-metrics">
+        <div class="mc"><div class="mc-label">本月運動次數</div><div class="mc-val">—</div></div>
+        <div class="mc"><div class="mc-label">最新體重</div><div class="mc-val">—</div></div>
+        <div class="mc"><div class="mc-label">最新體脂</div><div class="mc-val">—</div></div>
+        <div class="mc"><div class="mc-label">近況</div><div class="mc-val" style="font-size:13px;padding-top:5px;">—</div></div>
+      </div>
+
+      <div class="card">
+        <div class="sec-title">最近 4 週出席紀錄</div>
+        <div class="week-labels">
+          <div class="wl">一</div><div class="wl">二</div><div class="wl">三</div>
+          <div class="wl">四</div><div class="wl">五</div><div class="wl">六</div><div class="wl">日</div>
+        </div>
+        <div class="heatmap" id="heatmap"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:center;">
+          <span style="font-size:10px;color:var(--text3);">少</span>
+          <div style="width:16px;height:12px;border-radius:3px;background:var(--surface2);border:1px solid var(--border);"></div>
+          <div style="width:16px;height:12px;border-radius:3px;background:#c7e6b8;"></div>
+          <div style="width:16px;height:12px;border-radius:3px;background:#7fbe4e;"></div>
+          <div style="width:16px;height:12px;border-radius:3px;background:#3b6d11;"></div>
+          <span style="font-size:10px;color:var(--text3);">多</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="sec-title">InBody 趨勢</div>
+        <div class="chart-legends">
+          <div class="legend-item"><div class="legend-dot" style="background:#185fa5;"></div>體重</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#3b6d11;"></div>骨骼肌</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#993c1d;"></div>體脂率</div>
+        </div>
+        <div class="chart-wrap"><canvas id="overview-ib-chart"></canvas></div>
+      </div>
       <div class="card" id="pr-card">
         <div class="sec-title">近期 PR 突破</div>
         <div id="pr-list"><div class="empty">載入中...</div></div>
