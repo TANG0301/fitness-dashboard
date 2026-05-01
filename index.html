@@ -224,13 +224,20 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
         <div class="empty">載入中...</div>
       </div>
       <div class="card">
-        <div class="sec-title">趨勢圖</div>
+        <div class="sec-title">體重 · 骨骼肌 · 體脂肪量</div>
         <div class="chart-legends">
-          <div class="legend-item"><div class="legend-dot" style="background:#185fa5;"></div>體重 (kg)</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#3b6d11;"></div>骨骼肌 (kg)</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#993c1d;"></div>體脂率 (%)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#185fa5;"></div>體重</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#3b6d11;"></div>骨骼肌</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#993c1d;"></div>體脂肪量</div>
         </div>
         <div class="chart-wrap"><canvas id="ib-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="sec-title">體脂率趨勢</div>
+        <div class="chart-legends">
+          <div class="legend-item"><div class="legend-dot" style="background:#993c1d;"></div>體脂率 (%)</div>
+        </div>
+        <div class="chart-wrap"><canvas id="ib-chart2"></canvas></div>
       </div>
     </div>
   </div>
@@ -317,9 +324,16 @@ function parseInBody(rows) {
   const start = String(rows[0][0]).includes('-') ? 0 : 1;
   return rows.slice(start).filter(r=>r[0]).map(r=>({
     date:r[0]||'',
-    weight_kg:parseFloat(r[1])||0, smm_kg:parseFloat(r[2])||0,
-    body_fat_kg:parseFloat(r[3])||0, body_fat_pct:parseFloat(r[4])||0,
-    bmi:parseFloat(r[6])||0, bmr_kcal:parseFloat(r[8])||0,
+    weight_kg:parseFloat(r[1])||0,
+    smm_kg:parseFloat(r[2])||0,
+    body_fat_kg:parseFloat(r[3])||0,
+    body_fat_pct:parseFloat(r[4])||0,
+    ffm_kg:parseFloat(r[5])||0,
+    bmi:parseFloat(r[6])||0,
+    whr:parseFloat(r[7])||0,
+    bmr_kcal:parseFloat(r[8])||0,
+    visceral_fat:parseFloat(r[14])||0,
+    fitness_score:parseFloat(r[15])||0,
   }));
 }
 
@@ -542,44 +556,83 @@ function renderInBody() {
     if(!p) return '';
     const d=(parseFloat(cur)-parseFloat(p)).toFixed(1);
     const good=inv?parseFloat(d)<0:parseFloat(d)>0;
-    return `<div class="ib-delta ${good?'up':'dn'}">${parseFloat(d)>0?'↑':'↓'} ${Math.abs(parseFloat(d)).toFixed(1)}${unit}</div>`;
+    return '<div class="ib-delta '+(good?'up':'dn')+'">'+(parseFloat(d)>0?'↑':'↓')+' '+Math.abs(parseFloat(d)).toFixed(1)+unit+'</div>';
   }
   const fatChg=prv?parseFloat(lat.body_fat_pct)-parseFloat(prv.body_fat_pct):0;
   const mscChg=prv?parseFloat(lat.smm_kg)-parseFloat(prv.smm_kg):0;
   let stText='維持中',stCls='pill-amber';
-  if(mscChg>0&&fatChg<0){stText='增肌減脂進行中';stCls='pill-green';}
+  if(mscChg>0&&fatChg<0){stText='增肌減脂進行中 🎉';stCls='pill-green';}
   else if(mscChg>0){stText='肌肉增加中';stCls='pill-green';}
   else if(fatChg<0){stText='體脂下降中';stCls='pill-green';}
-  document.getElementById('ib-latest').innerHTML=`
-    <div style="display:flex;justify-content:space-between;margin-bottom:14px;">
-      <div style="font-size:15px;font-weight:500;">最新測量</div>
-      <div style="font-size:11px;color:var(--text3);">${lat.date}</div>
-    </div>
-    <div class="ib-grid">
-      <div class="ib-item"><div class="ib-label">體重</div><div class="ib-val">${lat.weight_kg}<span class="ib-unit"> kg</span></div>${delta(lat.weight_kg,prv?.weight_kg,' kg',true)}</div>
-      <div class="ib-item"><div class="ib-label">骨骼肌重</div><div class="ib-val">${lat.smm_kg}<span class="ib-unit"> kg</span></div>${delta(lat.smm_kg,prv?.smm_kg,' kg',false)}</div>
-      <div class="ib-item"><div class="ib-label">體脂率</div><div class="ib-val">${lat.body_fat_pct}<span class="ib-unit"> %</span></div>${delta(lat.body_fat_pct,prv?.body_fat_pct,' %',true)}</div>
-      <div class="ib-item"><div class="ib-label">體脂肪量</div><div class="ib-val">${lat.body_fat_kg}<span class="ib-unit"> kg</span></div>${delta(lat.body_fat_kg,prv?.body_fat_kg,' kg',true)}</div>
-      <div class="ib-item"><div class="ib-label">BMI</div><div class="ib-val">${lat.bmi}</div></div>
-      <div class="ib-item"><div class="ib-label">基礎代謝</div><div class="ib-val">${lat.bmr_kcal}<span class="ib-unit"> kcal</span></div>${delta(lat.bmr_kcal,prv?.bmr_kcal,' kcal',false)}</div>
-    </div>
-    <span class="status-pill ${stCls}">${stText}</span>
-  `;
+
+  // fitness score progress bar
+  const score = lat.fitness_score||0;
+  const scoreBar = score ? '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--surface2);">'+
+    '<div style="display:flex;justify-content:space-between;margin-bottom:6px;">'+
+      '<span style="font-size:12px;color:var(--text2);">健身評分</span>'+
+      '<span style="font-size:14px;font-weight:500;">'+(score)+' 分'+(prv?.fitness_score?'<span style="font-size:11px;color:'+(score>prv.fitness_score?'var(--green)':'var(--red)')+'"> ('+(score>prv.fitness_score?'+':'')+(score-prv.fitness_score)+')</span>':'')+'</span>'+
+    '</div>'+
+    '<div style="background:var(--surface2);border-radius:4px;height:6px;">'+
+      '<div style="background:var(--green);border-radius:4px;height:6px;width:'+Math.min(score,100)+'%;transition:width .5s;"></div>'+
+    '</div>'+
+    '<div style="display:flex;justify-content:space-between;margin-top:3px;">'+
+      '<span style="font-size:9px;color:var(--text3);">0</span>'+
+      '<span style="font-size:9px;color:var(--text3);">100</span>'+
+    '</div>'+
+  '</div>' : '';
+
+  document.getElementById('ib-latest').innerHTML=
+    '<div style="display:flex;justify-content:space-between;margin-bottom:14px;">'+
+      '<div style="font-size:15px;font-weight:500;">最新測量</div>'+
+      '<div style="font-size:11px;color:var(--text3);">'+lat.date+'</div>'+
+    '</div>'+
+    '<div class="ib-grid">'+
+      '<div class="ib-item"><div class="ib-label">體重</div><div class="ib-val">'+lat.weight_kg+'<span class="ib-unit"> kg</span></div>'+delta(lat.weight_kg,prv?.weight_kg,' kg',true)+'</div>'+
+      '<div class="ib-item"><div class="ib-label">骨骼肌重</div><div class="ib-val">'+lat.smm_kg+'<span class="ib-unit"> kg</span></div>'+delta(lat.smm_kg,prv?.smm_kg,' kg',false)+'</div>'+
+      '<div class="ib-item"><div class="ib-label">體脂率</div><div class="ib-val">'+lat.body_fat_pct+'<span class="ib-unit"> %</span></div>'+delta(lat.body_fat_pct,prv?.body_fat_pct,' %',true)+'</div>'+
+      '<div class="ib-item"><div class="ib-label">體脂肪量</div><div class="ib-val">'+lat.body_fat_kg+'<span class="ib-unit"> kg</span></div>'+delta(lat.body_fat_kg,prv?.body_fat_kg,' kg',true)+'</div>'+
+      '<div class="ib-item"><div class="ib-label">除脂體重</div><div class="ib-val">'+lat.ffm_kg+'<span class="ib-unit"> kg</span></div>'+delta(lat.ffm_kg,prv?.ffm_kg,' kg',false)+'</div>'+
+      '<div class="ib-item"><div class="ib-label">BMI</div><div class="ib-val">'+lat.bmi+'</div></div>'+
+      '<div class="ib-item"><div class="ib-label">基礎代謝</div><div class="ib-val">'+lat.bmr_kcal+'<span class="ib-unit"> kcal</span></div>'+delta(lat.bmr_kcal,prv?.bmr_kcal,' kcal',false)+'</div>'+
+      '<div class="ib-item"><div class="ib-label">內臟脂肪等級</div><div class="ib-val">'+lat.visceral_fat+'<span class="ib-unit"> 級</span></div>'+delta(lat.visceral_fat,prv?.visceral_fat,' 級',true)+'</div>'+
+    '</div>'+
+    '<span class="status-pill '+stCls+'">'+stText+'</span>'+
+    scoreBar;
+
+  // Chart 1: 體重 & 骨骼肌 (kg scale)
   const cd=sorted.slice(0,6).reverse();
+  const labels=cd.map(r=>r.date.slice(5).replace('-','/'));
   if(ibChart) ibChart.destroy();
   ibChart=new Chart(document.getElementById('ib-chart'),{type:'line',data:{
-    labels:cd.map(r=>r.date.slice(5).replace('-','/')),
+    labels,
     datasets:[
-      {data:cd.map(r=>r.weight_kg||null),borderColor:'#185fa5',backgroundColor:'rgba(24,95,165,0.07)',borderWidth:2,pointRadius:4,fill:true,tension:0.35,yAxisID:'y'},
-      {data:cd.map(r=>r.smm_kg||null),borderColor:'#3b6d11',backgroundColor:'rgba(59,109,17,0.07)',borderWidth:2,pointRadius:4,fill:true,tension:0.35,yAxisID:'y'},
-      {data:cd.map(r=>r.body_fat_pct||null),borderColor:'#993c1d',backgroundColor:'rgba(153,60,29,0.06)',borderWidth:2,pointRadius:4,fill:true,tension:0.35,yAxisID:'y2'},
+      {label:'體重',data:cd.map(r=>r.weight_kg||null),borderColor:'#185fa5',backgroundColor:'rgba(24,95,165,0.1)',borderWidth:2,pointRadius:4,fill:true,tension:0.35},
+      {label:'骨骼肌',data:cd.map(r=>r.smm_kg||null),borderColor:'#3b6d11',backgroundColor:'rgba(59,109,17,0.1)',borderWidth:2,pointRadius:4,fill:true,tension:0.35},
+      {label:'體脂肪量',data:cd.map(r=>r.body_fat_kg||null),borderColor:'#993c1d',backgroundColor:'rgba(153,60,29,0.08)',borderWidth:2,pointRadius:4,fill:true,tension:0.35},
     ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
       scales:{
-        y:{position:'left',ticks:{font:{size:10},callback:v=>v+'kg'},grid:{color:'rgba(0,0,0,0.05)'}},
-        y2:{position:'right',ticks:{font:{size:10},callback:v=>v+'%'},grid:{display:false}},
+        y:{ticks:{font:{size:10},callback:v=>v+'kg'},grid:{color:'rgba(0,0,0,0.05)'}},
         x:{ticks:{font:{size:10}},grid:{display:false}}
       }}
   });
+
+  // Chart 2: 體脂率 (separate)
+  const c2el=document.getElementById('ib-chart2');
+  if(c2el){
+    if(window.ibChart2) window.ibChart2.destroy();
+    window.ibChart2=new Chart(c2el,{type:'line',data:{
+      labels,
+      datasets:[{
+        label:'體脂率',data:cd.map(r=>r.body_fat_pct||null),
+        borderColor:'#993c1d',backgroundColor:'rgba(153,60,29,0.08)',
+        borderWidth:2,pointRadius:4,fill:true,tension:0.35
+      }]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{
+          y:{ticks:{font:{size:10},callback:v=>v+'%'},grid:{color:'rgba(0,0,0,0.05)'},min:30,max:50},
+          x:{ticks:{font:{size:10}},grid:{display:false}}
+        }}
+    });
+  }
 }
 </script>
 </body>
