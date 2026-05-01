@@ -771,23 +771,31 @@ function renderLogList() {
 
     const items = Object.keys(dayMap).sort().reverse().map(date => {
       const dayRows = dayMap[date];
-      return dayRows.map(r => {
-        const w = parseFloat(r.weight_kg||0) > 0 ? `${r.weight_kg} kg` : '自重';
-        const setsNum = workoutRows.filter(x => x.date===r.date && x.exercise_name===r.exercise_name).length;
-        const isPR = (r.is_pr||'').toUpperCase()==='TRUE';
-        return `
-          <div class="log-item">
-            <div class="log-top">
-              <div class="log-name">${r.exercise_name||''}</div>
-              <div class="log-date-lbl">${date.slice(5).replace('-','/')}</div>
-            </div>
-            <div class="log-detail">${w} × ${r.reps||'?'}下 × ${setsNum}組</div>
-            <div class="log-chips">
-              <span class="log-chip muscle">${r.muscle_groups||''}</span>
-              ${isPR?'<span class="log-chip pr">PR</span>':''}
-              ${r.note?`<span class="log-chip">${r.note}</span>`:''}
-            </div>
-          </div>`;
+      const exMap2 = {};
+      dayRows.forEach(r => {
+        const k = r.exercise_name || '';
+        if (!exMap2[k]) exMap2[k] = { name:k, muscle:r.muscle_groups||'', sets:[], isPR:false, note:'' };
+        exMap2[k].sets.push(r);
+        if ((r.is_pr||'').toUpperCase()==='TRUE') exMap2[k].isPR = true;
+        if (r.note) exMap2[k].note = r.note;
+      });
+      return Object.values(exMap2).map(ex => {
+        const setsNum = ex.sets.length;
+        const maxW = Math.max(...ex.sets.map(s => parseFloat(s.weight_kg||0)));
+        const lastReps = ex.sets[ex.sets.length-1]?.reps || '';
+        const wLabel = maxW > 0 ? maxW + ' kg' : '自重';
+        return '<div class="log-item">' +
+          '<div class="log-top">' +
+            '<div class="log-name">' + ex.name + '</div>' +
+            '<div class="log-date-lbl">' + date.slice(5).replace('-','/') + '</div>' +
+          '</div>' +
+          '<div class="log-detail">' + wLabel + ' × ' + lastReps + '下 × ' + setsNum + '組</div>' +
+          '<div class="log-chips">' +
+            '<span class="log-chip muscle">' + ex.muscle + '</span>' +
+            (ex.isPR ? '<span class="log-chip pr">PR</span>' : '') +
+            (ex.note ? '<span class="log-chip">' + ex.note + '</span>' : '') +
+          '</div>' +
+        '</div>';
       }).join('');
     }).join('');
 
