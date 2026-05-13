@@ -167,7 +167,7 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
         <div class="mc"><div class="mc-label">本月運動次數</div><div class="mc-val">—</div></div>
         <div class="mc"><div class="mc-label">最新體重</div><div class="mc-val">—</div></div>
         <div class="mc"><div class="mc-label">最新體脂率</div><div class="mc-val">—</div></div>
-        <div class="mc"><div class="mc-label">近況</div><div class="mc-val" style="font-size:13px;padding-top:5px;">—</div></div>
+        <div class="mc" id="mc-cycle" style="grid-column:span 2;"><div class="mc-label">今日建議</div><div id="cycle-suggestion" style="font-size:12px;line-height:1.6;color:var(--text2);margin-top:4px;">載入中...</div></div>
       </div>
       <div class="card" id="cycle-card" style="border-left:3px solid #e05c5c;">
         <div class="sec-title">週期提示</div>
@@ -378,19 +378,46 @@ function renderOverview() {
   // 計算本週訓練次數
   const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate()-now.getDay()+1); startOfWeek.setHours(0,0,0,0);
   const weekDays = [...dateSet].filter(d=>new Date(d)>=startOfWeek).length;
-  let statusHtml, statusCls;
-  if (!lastDate) {
-    statusHtml='開始你的第一次訓練吧！'; statusCls='pill-amber';
-  } else if (daysSince===0) {
-    statusHtml='今天有訓練，繼續保持！'; statusCls='pill-green';
-  } else if (daysSince===1) {
-    statusHtml='昨天有訓練，今天可休息或輕度活動'; statusCls='pill-green';
-  } else if (daysSince<=3) {
-    statusHtml='距上次訓練 '+daysSince+' 天，是時候動了！'; statusCls='pill-amber';
-  } else {
-    statusHtml='已 '+daysSince+' 天未訓練，快回來！'; statusCls='pill-amber';
+  // Cycle-aware suggestion
+  const trainedToday = daysSince === 0;
+  function getCycleSuggestion() {
+    const periods = (window._periodRows||[]).map(r=>r.date).filter(Boolean).sort();
+    if (!periods.length) {
+      if (trainedToday) return '今天有訓練了，做得好！好好休息恢復 💪';
+      if (daysSince===1) return '昨天練過，今天可以主動恢復或輕鬆活動 🚶';
+      if (daysSince<=3) return '該動一動了，今天安排訓練吧！';
+      if (daysSince<=5) return '已經 '+daysSince+' 天沒練了，身體在等你回來 💪';
+      return '超過 '+daysSince+' 天了，就算10分鐘散步也好，動起來！';
+    }
+    const lastPeriod = periods[periods.length-1];
+    const cycleDay = Math.floor((now - new Date(lastPeriod)) / 86400000);
+    if (cycleDay <= 4) {
+      if (trainedToday) return '🩸 月經期還來訓練，你真的很勇！溫和就好，記得補鐵補水 🤍';
+      if (daysSince<=2) return '🩸 月經期有在動，很棒！今天可以休息或輕鬆伸展';
+      return '🩸 月經期休息完全沒問題，好好補鐵補水 🤍';
+    }
+    if (cycleDay <= 13) {
+      if (trainedToday) return '⚡ 濾泡期在衝訓練，狀態正在回升，繼續！蛋白質要吃夠 💪';
+      if (daysSince===1) return '⚡ 昨天練了，今天可休息，狀態越來越好！';
+      if (daysSince<=3) return '⚡ 濾泡期是黃金期，今天來訓練吧！代謝最好的時機';
+      return '⚡ 濾泡期已 '+daysSince+' 天沒練了，代謝最好的時期，今天動起來 💪';
+    }
+    if (cycleDay <= 16) {
+      if (trainedToday) return '🔥 排卵期在練，巔峰狀態！可以挑戰新重量 🔥';
+      if (daysSince<=2) return '🔥 排卵期狀態最好，昨天練了很棒，今天繼續衝！';
+      return '🔥 排卵期是你狀態最好的3天，'+daysSince+'天沒動，今天來挑戰一下？';
+    }
+    if (cycleDay <= 22) {
+      if (trainedToday) return '🌙 黃體期還願意來練，你很強！補充鎂和B群 🌙';
+      if (daysSince<=3) return '🌙 黃體期有在動就很好！輕訓練維持就夠了';
+      return '🌙 黃體期 '+daysSince+' 天沒動，輕重量或瑜伽就好，動一動心情會好 🌙';
+    }
+    if (trainedToday) return '💛 PMS期間還在練，真的很厲害！⚠️ 先吃蛋白質再吃其他的 💛';
+    if (daysSince<=2) return '💛 PMS期間有在動，做得好！⚠️ 暴食傾向期，避免空腹';
+    if (daysSince<=4) return '⚠️ PMS期間，輕瑜伽或散步就好，動一動心情會好 💛';
+    return '⚠️ PMS期間已 '+daysSince+' 天沒動，就算10分鐘散步也好。煩躁是荷爾蒙，不是你的錯 💛';
   }
-  const statusFull='<span class="status-pill '+statusCls+'" style="font-size:11px;padding:4px 8px;">'+statusHtml+'</span>';
+  const suggestionText = getCycleSuggestion();
 
   function dval(cur,p,unit,inv) {
     if (!p) return '';
@@ -403,7 +430,7 @@ function renderOverview() {
     '<div class="mc"><div class="mc-label">本月運動次數</div><div class="mc-val">'+monthCount+'<span class="mc-unit">次</span></div><div class="mc-delta eq">本週 '+weekDays+' 天</div></div>'+
     '<div class="mc"><div class="mc-label">最新體重</div><div class="mc-val">'+(lat?lat.weight_kg:'--')+'<span class="mc-unit"> kg</span></div>'+(lat?dval(lat.weight_kg,prv?.weight_kg,' kg',true):'')+'</div>'+
     '<div class="mc"><div class="mc-label">最新體脂</div><div class="mc-val">'+(lat?lat.body_fat_pct:'--')+'<span class="mc-unit"> %</span></div>'+(lat?dval(lat.body_fat_pct,prv?.body_fat_pct,' %',true):'')+'</div>'+
-    '<div class="mc" style="grid-column:span 2;"><div class="mc-label" style="margin-bottom:6px;">近況提示</div>'+statusFull+'</div>';
+    '<div class="mc" style="grid-column:span 2;"><div class="mc-label" style="margin-bottom:6px;">今日建議</div><div style="font-size:12px;line-height:1.6;color:var(--text2);">'+suggestionText+'</div></div>';
 
   // heatmap — align to Monday, show 4 full weeks
   const hm = document.getElementById('heatmap');
@@ -450,16 +477,38 @@ function renderOverview() {
   }
 
   // PR list
-  const prMap={};
-  workoutRows.filter(r=>(r.is_pr||'').toUpperCase()==='TRUE').forEach(r=>{
-    if(!prMap[r.exercise_name]||r.date>prMap[r.exercise_name].date) prMap[r.exercise_name]=r;
+  // Build PR map with best performance per exercise
+  const prExMap={};
+  workoutRows.forEach(r=>{
+    const name=r.exercise_name||''; if(!name) return;
+    if(!prExMap[name]) prExMap[name]={name,muscle:r.muscle_groups||'',date:'',weight:0,reps:0,sets:0,isPR:false};
+    const e=prExMap[name];
+    const w=parseFloat(r.weight_kg||0), rp=parseInt(r.reps||0);
+    if(r.date>e.date) e.date=r.date;
+    if(w>e.weight){e.weight=w; e.reps=rp;}
+    if(w===e.weight&&rp>e.reps) e.reps=rp;
+    if((r.is_pr||'').toUpperCase()==='TRUE') e.isPR=true;
   });
-  const prArr=Object.values(prMap).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+  // Count sets per exercise per latest date
+  const prSetMap={};
+  workoutRows.forEach(r=>{
+    const k=r.date+'|'+r.exercise_name;
+    prSetMap[k]=(prSetMap[k]||0)+1;
+  });
+  const prArr=Object.values(prExMap)
+    .filter(e=>e.isPR)
+    .sort((a,b)=>b.date.localeCompare(a.date))
+    .slice(0,6);
   document.getElementById('pr-list').innerHTML = prArr.length
-    ? prArr.map(r=>`<div class="pr-row">
-        <div><div class="pr-name">${r.exercise_name}</div><div class="pr-tag">${classifyMuscle(r.muscle_groups)} · ${r.date}</div></div>
-        <div class="pr-right"><div class="pr-weight">${parseFloat(r.max_weight_kg||0)>0?r.max_weight_kg+' kg':'自重'}</div><span class="pr-badge">↑ PR</span></div>
-      </div>`).join('')
+    ? prArr.map(e=>{
+        const setsNum=prSetMap[e.date+'|'+e.name]||0;
+        const wLabel=e.weight>0?e.weight+' kg':'自重';
+        const detail=wLabel+(e.reps?' × '+e.reps+'下':'')+(setsNum?' × '+setsNum+'組':'');
+        return '<div class="pr-row">'+
+          '<div><div class="pr-name">'+e.name+'</div><div class="pr-tag">'+classifyMuscle(e.muscle)+' · '+e.date+'</div></div>'+
+          '<div class="pr-right"><div class="pr-weight">'+detail+'</div><span class="pr-badge">↑ PR</span></div>'+
+        '</div>';
+      }).join('')
     : '<div class="empty">尚無 PR 紀錄</div>';
 
   // Cycle phase tip
