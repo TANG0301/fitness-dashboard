@@ -621,18 +621,26 @@ function filterEx() {
   if(activeMuscleFilter!=='全部') arr=arr.filter(e=>e.cat===activeMuscleFilter);
   if(q) arr=arr.filter(e=>e.name.toLowerCase().includes(q));
   arr.sort((a,b)=>b.latestDate.localeCompare(a.latestDate));
+  function secToDisplay(sec) {
+    if (!sec || sec <= 0) return null;
+    if (sec < 60) return sec + '秒';
+    const m = Math.floor(sec/60), s = sec%60;
+    return s > 0 ? m+'分'+s+'秒' : m+'分鐘';
+  }
+
   document.getElementById('ex-table').innerHTML=arr.length?arr.map(e=>{
     const setsNum=setMap[e.latestDate+'|'+e.name]||1;
     let top,bot='';
     if(e.latestSec>0&&e.latestWeight===0){
-      top=e.latestSec+'秒 × '+setsNum+'組';
+      top=secToDisplay(e.latestSec)+' × '+setsNum+'組';
     } else {
       const w=e.latestWeight>0?e.latestWeight+' kg':'自重';
       const bw=e.bestWeight>0?e.bestWeight+' kg':'自重';
-      top=w+' × '+setsNum+'組';
-      bot=`<div class="ex-best ${e.latestWeight>=e.bestWeight?'hi':''}">最佳 ${bw}</div>`;
+      const repsStr=e.latestReps>0?' × '+e.latestReps+'下':'';
+      top=w+repsStr+' × '+setsNum+'組';
+      bot='<div class="ex-best '+(e.latestWeight>=e.bestWeight?'hi':'')+'">最佳 '+bw+'</div>';
     }
-    return `<div class="ex-row"><div><div class="ex-name">${e.name}</div><div class="ex-meta">${e.latestDate}</div></div><div class="ex-right"><div class="ex-cur">${top}</div>${bot}</div></div>`;
+    return '<div class="ex-row"><div><div class="ex-name">'+e.name+'</div><div class="ex-meta">'+e.latestDate+'</div></div><div class="ex-right"><div class="ex-cur">'+top+'</div>'+bot+'</div></div>';
   }).join(''):'<div class="empty">沒有符合的動作</div>';
 }
 
@@ -684,9 +692,10 @@ function renderLogList() {
         const maxW=Math.max(...ex.sets.map(s=>parseFloat(s.weight_kg||0)));
         const maxSec=Math.max(...ex.sets.map(s=>parseInt(s.duration_sec||0)));
         const lastReps=ex.sets[ex.sets.length-1]?.reps||'';
+        function secFmt(s){if(!s||s<=0)return null;if(s<60)return s+'秒';const m=Math.floor(s/60),r=s%60;return r>0?m+'分'+r+'秒':m+'分鐘';}
         const detail=maxSec>0&&maxW===0
-          ? maxSec+'秒 × '+setsNum+'組'
-          : (maxW>0?maxW+' kg':'自重')+' × '+lastReps+'下 × '+setsNum+'組';
+          ? secFmt(maxSec)+' × '+setsNum+'組'
+          : (maxW>0?maxW+' kg':'自重')+(lastReps?' × '+lastReps+'下':'')+' × '+setsNum+'組';
         const cat=classifyMuscle(ex.muscle);
         return '<div class="log-item">'+
           '<div class="log-top"><div class="log-name">'+ex.name+'</div><div class="log-date-lbl">'+date.slice(5).replace('-','/')+'</div></div>'+
