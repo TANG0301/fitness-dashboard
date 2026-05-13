@@ -59,7 +59,7 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
 /* Heatmap */
 .week-labels{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px;}
 .wl{font-size:9px;color:var(--text3);text-align:center;}
-.heatmap{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.heatmap{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;} .heatmap>div{position:relative;}
 .hd{height:30px;border-radius:5px;background:var(--surface2);}
 .hd.l1{background:#c7e6b8;}.hd.l2{background:#7fbe4e;}.hd.l3{background:#3b6d11;}
 
@@ -168,6 +168,10 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
         <div class="mc"><div class="mc-label">最新體重</div><div class="mc-val">—</div></div>
         <div class="mc"><div class="mc-label">最新體脂率</div><div class="mc-val">—</div></div>
         <div class="mc"><div class="mc-label">近況</div><div class="mc-val" style="font-size:13px;padding-top:5px;">—</div></div>
+      </div>
+      <div class="card" id="cycle-card" style="border-left:3px solid #e05c5c;">
+        <div class="sec-title">週期提示</div>
+        <div id="cycle-tip"><div style="font-size:12px;color:var(--text3);">記錄月經後顯示建議</div></div>
       </div>
       <div class="card">
         <div class="sec-title">最近 4 週出席紀錄</div>
@@ -339,12 +343,15 @@ function parseInBody(rows) {
 async function initApp() {
   document.getElementById('topbar-date').textContent =
     new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'long'});
-  const [wRaw, iRaw] = await Promise.all([
+  const [wRaw, iRaw, pRaw] = await Promise.all([
     fetchRange('Workout!A:M'),
     fetchRange('InBody!A:V'),
+    fetchRange('Period!A:B'),
   ]);
   workoutRows = parseWorkout(wRaw);
   inbodyRows  = parseInBody(iRaw);
+  // Parse period rows
+  window._periodRows = (pRaw||[]).filter(r=>r[0]&&String(r[0]).includes('-')).map(r=>({date:r[0]}));
   renderOverview();
   renderExercises();
   renderLog();
@@ -398,19 +405,48 @@ function renderOverview() {
     '<div class="mc"><div class="mc-label">最新體脂</div><div class="mc-val">'+(lat?lat.body_fat_pct:'--')+'<span class="mc-unit"> %</span></div>'+(lat?dval(lat.body_fat_pct,prv?.body_fat_pct,' %',true):'')+'</div>'+
     '<div class="mc" style="grid-column:span 2;"><div class="mc-label" style="margin-bottom:6px;">近況提示</div>'+statusFull+'</div>';
 
-  // heatmap
+  // heatmap — align to Monday, show 4 full weeks
   const hm = document.getElementById('heatmap');
   hm.innerHTML = '';
   const trainMap = {};
   workoutRows.forEach(r=>{ if(r.date) trainMap[r.date]=(trainMap[r.date]||0)+1; });
-  for (let i=27;i>=0;i--) {
-    const d=new Date(now); d.setDate(now.getDate()-i);
-    const key=d.toISOString().slice(0,10);
-    const cnt=trainMap[key]||0;
-    const div=document.createElement('div');
+  // Find last Sunday (end of current week display)
+  const todayDay = now.getDay(); // 0=Sun,1=Mon...6=Sat
+  // We want to end on the coming Sunday (or today if Sunday)
+  const daysToSun = todayDay === 0 ? 0 : 7 - todayDay;
+  const endDate = new Date(now); endDate.setDate(now.getDate() + daysToSun);
+  // Start = 28 days before endDate
+  const startDate = new Date(endDate); startDate.setDate(endDate.getDate() - 27);
+  // Period map
+  const periodMap = {};
+  if (window._periodRows) {
+    window._periodRows.forEach(r => {
+      if (!r.date) return;
+      const s = new Date(r.date);
+      for (let i = 0; i < 5; i++) {
+        const d = new Date(s); d.setDate(s.getDate() + i);
+        periodMap[d.toISOString().slice(0,10)] = true;
+      }
+    });
+  }
+  for (let i = 0; i < 28; i++) {
+    const d = new Date(startDate); d.setDate(startDate.getDate() + i);
+    const key = d.toISOString().slice(0,10);
+    const cnt = trainMap[key]||0;
+    const isPeriod = periodMap[key];
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:relative;';
+    const div = document.createElement('div');
     div.className='hd '+(cnt===0?'':cnt<=2?'l1':cnt<=5?'l2':'l3');
-    div.title=key+(cnt?' ('+cnt+'組)':'');
-    hm.appendChild(div);
+    div.title=key+(cnt?' ('+cnt+'組)':'')+(isPeriod?' 🩸':'');
+    div.style.cssText = 'position:relative;';
+    wrap.appendChild(div);
+    if (isPeriod) {
+      const dot = document.createElement('div');
+      dot.style.cssText = 'position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:#e05c5c;';
+      wrap.appendChild(dot);
+    }
+    hm.appendChild(wrap);
   }
 
   // PR list
@@ -425,6 +461,61 @@ function renderOverview() {
         <div class="pr-right"><div class="pr-weight">${parseFloat(r.max_weight_kg||0)>0?r.max_weight_kg+' kg':'自重'}</div><span class="pr-badge">↑ PR</span></div>
       </div>`).join('')
     : '<div class="empty">尚無 PR 紀錄</div>';
+
+  // Cycle phase tip
+  const cycleEl = document.getElementById('cycle-tip');
+  if (cycleEl) {
+    const periods = (window._periodRows||[]).map(r=>r.date).filter(Boolean).sort();
+    if (periods.length) {
+      const lastPeriod = periods[periods.length-1];
+      const daysSince = Math.floor((now - new Date(lastPeriod)) / 86400000);
+
+      // Estimate cycle length from history
+      let cycleLen = 28;
+      if (periods.length >= 2) {
+        const diffs = [];
+        for (let i=1;i<periods.length;i++) {
+          const diff = Math.floor((new Date(periods[i])-new Date(periods[i-1]))/86400000);
+          if (diff>18&&diff<45) diffs.push(diff);
+        }
+        if (diffs.length) cycleLen = Math.round(diffs.reduce((a,b)=>a+b,0)/diffs.length);
+      }
+
+      // Next period estimate
+      const nextPeriodDate = new Date(lastPeriod);
+      nextPeriodDate.setDate(nextPeriodDate.getDate() + cycleLen);
+      const daysToNext = Math.floor((nextPeriodDate - now) / 86400000);
+
+      let phase, tip, color, emoji;
+      if (daysSince <= 4) {
+        phase='月經期'; emoji='🩸'; color='#e05c5c';
+        tip='補鐵、補水｜溫和伸展或散步｜疲倦很正常，對自己好一點 🤍';
+      } else if (daysSince <= 13) {
+        phase='濾泡期'; emoji='⚡'; color='#3b6d11';
+        tip='蛋白質要夠｜衝力量或間歇跑｜狀態回來了，把握好好練 💪';
+      } else if (daysSince <= 16) {
+        phase='排卵期'; emoji='🔥'; color='#185fa5';
+        tip='均衡飲食就好｜挑戰高強度或新PR｜你現在狀態最好，相信自己 🔥';
+      } else if (daysSince <= 22) {
+        phase='黃體期'; emoji='🌙'; color='#854f0b';
+        tip='多補鎂和B群｜中低強度訓練｜情緒可能起伏，先動起來心情會好 🌙';
+      } else {
+        phase='黃體期後段'; emoji='⚠️'; color='#a32d2d';
+        tip='⚠️ 暴食傾向期：先吃蛋白質再吃其他，避免空腹｜輕重量或瑜伽｜煩躁是荷爾蒙，不是你的錯 💛';
+      }
+
+      const nextTip = daysToNext <= 7 && daysToNext >= 0
+        ? '<div style="margin-top:8px;padding:7px 10px;background:#fef0f0;border-radius:8px;font-size:11px;color:#a32d2d;">🩸 預計 '+daysToNext+' 天後月經來，準備鐵劑和暖暖包，本週選輕訓練。</div>'
+        : '<div style="font-size:10px;color:var(--text3);margin-top:6px;">預計下次：'+nextPeriodDate.toLocaleDateString('zh-TW',{month:'long',day:'numeric'})+(periods.length>=2?' (週期約'+cycleLen+'天)':' (累積更多紀錄後更準確)')+'</div>';
+
+      cycleEl.innerHTML =
+        '<div style="font-size:12px;font-weight:500;color:'+color+';margin-bottom:6px;">'+emoji+' '+phase+'（第'+(daysSince+1)+'天）</div>'+
+        '<div style="font-size:12px;color:var(--text2);line-height:1.6;">'+tip+'</div>'+
+        nextTip;
+    } else {
+      cycleEl.innerHTML = '<div style="font-size:12px;color:var(--text3);">傳「月經」給 LINE Bot 開始記錄週期 🩸</div>';
+    }
+  }
 
   // overview InBody line chart
   const overviewChartEl = document.getElementById('overview-ib-chart');
