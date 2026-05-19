@@ -20,8 +20,6 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);overscroll-behavior:none;}
-
-/* Login */
 #login{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;}
 .login-mark{width:56px;height:56px;border-radius:16px;background:var(--text);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:1.5rem;font-family:'DM Mono',monospace;}
 .login-title{font-size:19px;font-weight:500;margin-bottom:4px;}
@@ -31,8 +29,6 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
 .login-btn{width:100%;max-width:300px;padding:11px;background:var(--text);color:var(--bg);border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;}
 .login-btn:active{opacity:.75;}
 .login-err{font-size:13px;color:var(--red);margin-top:8px;min-height:18px;text-align:center;max-width:300px;}
-
-/* App shell */
 #app{display:none;height:100vh;flex-direction:column;overflow:hidden;}
 .topbar{background:var(--bg);padding:52px 18px 10px;display:flex;align-items:flex-end;justify-content:space-between;flex-shrink:0;}
 .topbar-name{font-size:22px;font-weight:500;letter-spacing:-.4px;}
@@ -44,8 +40,6 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
 .screens{flex:1;overflow:hidden;position:relative;}
 .screen{display:none;position:absolute;inset:0;overflow-y:auto;padding:14px 14px 80px;-webkit-overflow-scrolling:touch;}
 .screen.on{display:block;}
-
-/* Cards & Metrics */
 .metric-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px;}
 .mc{background:var(--surface);border-radius:var(--radius-sm);border:1px solid var(--border);padding:12px 14px;}
 .mc-label{font-size:11px;color:var(--text3);margin-bottom:5px;}
@@ -55,15 +49,11 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
 .up{color:var(--green);}.dn{color:var(--red);}.eq{color:var(--text3);}
 .card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:14px;margin-bottom:10px;}
 .sec-title{font-size:11px;font-weight:500;color:var(--text3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:12px;}
-
-/* Heatmap */
 .week-labels{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px;}
 .wl{font-size:9px;color:var(--text3);text-align:center;}
 .heatmap{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;} .heatmap>div{position:relative;}
 .hd{height:30px;border-radius:5px;background:var(--surface2);}
 .hd.l1{background:#c7e6b8;}.hd.l2{background:#7fbe4e;}.hd.l3{background:#3b6d11;}
-
-/* PR */
 .pr-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--surface2);}
 .pr-row:last-child{border-bottom:none;}
 .pr-name{font-size:13px;font-weight:500;}
@@ -71,8 +61,6 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
 .pr-right{text-align:right;}
 .pr-weight{font-size:14px;font-weight:500;}
 .pr-badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-top:2px;background:var(--green-bg);color:var(--green);}
-
-/* Exercise table */
 .search-wrap{position:relative;margin-bottom:10px;}
 .search-input{width:100%;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:9px 12px 9px 36px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;}
 .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--text3);}
@@ -88,8 +76,6 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
 .ex-cur{font-size:13px;font-weight:500;}
 .ex-best{font-size:11px;color:var(--text3);margin-top:2px;}
 .ex-best.hi{color:var(--green);}
-
-/* Log */
 .week-block{margin-bottom:16px;}
 .week-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
 .week-range{font-size:13px;font-weight:500;}
@@ -103,8 +89,6 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
 .log-chip{font-size:10px;padding:2px 8px;border-radius:20px;background:var(--surface2);color:var(--text2);}
 .log-chip.muscle{background:var(--green-bg);color:var(--green);}
 .log-chip.pr{background:var(--amber-bg);color:var(--amber);}
-
-/* InBody */
 .ib-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px;}
 .ib-item{background:var(--surface2);border-radius:var(--radius-sm);padding:11px 13px;}
 .ib-label{font-size:10px;color:var(--text3);margin-bottom:4px;}
@@ -118,15 +102,12 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
 .legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);}
 .legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
 .chart-wrap{position:relative;height:180px;}
-
-/* Bottom nav */
 .bottomnav{position:fixed;bottom:0;left:0;right:0;height:64px;background:var(--surface);border-top:1px solid var(--border);display:flex;padding:0 8px;padding-bottom:env(safe-area-inset-bottom);z-index:100;}
 .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;}
 .nav-ico{font-size:20px;line-height:1;}
 .nav-lbl{font-size:10px;color:var(--text3);font-weight:500;}
 .nav-btn.on .nav-lbl{color:var(--text);}
 .empty{text-align:center;padding:2.5rem 1rem;color:var(--text3);font-size:13px;}
-
 @media(min-width:480px){
   #app{max-width:430px;margin:0 auto;}
   .bottomnav{max-width:430px;left:50%;transform:translateX(-50%);}
@@ -152,26 +133,24 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
     </div>
     <button class="logout-btn" onclick="doLogout()">登出</button>
   </div>
-
   <div class="tabs">
     <button class="tab on" id="t0" onclick="switchTab(0)">總覽</button>
     <button class="tab" id="t1" onclick="switchTab(1)">動作</button>
     <button class="tab" id="t2" onclick="switchTab(2)">日誌</button>
     <button class="tab" id="t3" onclick="switchTab(3)">InBody</button>
   </div>
-
   <div class="screens">
     <!-- 總覽 -->
     <div class="screen on" id="s0">
       <div class="metric-grid" id="overview-metrics">
         <div class="mc"><div class="mc-label">本月運動次數</div><div class="mc-val">—</div></div>
         <div class="mc"><div class="mc-label">最新體重</div><div class="mc-val">—</div></div>
-        <div class="mc"><div class="mc-label">最新體脂率</div><div class="mc-val">—</div></div>
-        <div class="mc" id="mc-cycle" style="grid-column:span 2;"><div class="mc-label">今日建議</div><div id="cycle-suggestion" style="font-size:12px;line-height:1.6;color:var(--text2);margin-top:4px;">載入中...</div></div>
+        <div class="mc"><div class="mc-label">最新體脂</div><div class="mc-val">—</div></div>
+        <div class="mc" style="grid-column:span 2;"><div class="mc-label" style="margin-bottom:6px;">今日建議</div><div id="advice-text" style="font-size:12px;line-height:1.6;color:var(--text2);">載入中...</div></div>
       </div>
       <div class="card" id="cycle-card" style="border-left:3px solid #e05c5c;">
         <div class="sec-title">週期提示</div>
-        <div id="cycle-tip"><div style="font-size:12px;color:var(--text3);">記錄月經後顯示建議</div></div>
+        <div id="cycle-tip"><div style="font-size:12px;color:var(--text3);">載入中...</div></div>
       </div>
       <div class="card">
         <div class="sec-title">最近 4 週出席紀錄</div>
@@ -203,7 +182,6 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
         <div id="pr-list"><div class="empty">載入中...</div></div>
       </div>
     </div>
-
     <!-- 動作 -->
     <div class="screen" id="s1">
       <div class="search-wrap">
@@ -211,22 +189,16 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
         <input class="search-input" id="ex-search" placeholder="搜尋動作名稱..." oninput="filterEx()" />
       </div>
       <div class="chips" id="muscle-chips"></div>
-      <div class="card" style="padding:8px 14px;" id="ex-table">
-        <div class="empty">載入中...</div>
-      </div>
+      <div class="card" style="padding:8px 14px;" id="ex-table"><div class="empty">載入中...</div></div>
     </div>
-
     <!-- 日誌 -->
     <div class="screen" id="s2">
       <div class="chips" id="log-chips"></div>
       <div id="log-list"><div class="empty">載入中...</div></div>
     </div>
-
     <!-- InBody -->
     <div class="screen" id="s3">
-      <div class="card" id="ib-latest">
-        <div class="empty">載入中...</div>
-      </div>
+      <div class="card" id="ib-latest"><div class="empty">載入中...</div></div>
       <div class="card">
         <div class="sec-title">體重 · 骨骼肌 · 體脂肪量</div>
         <div class="chart-legends">
@@ -245,7 +217,6 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
       </div>
     </div>
   </div>
-
   <div class="bottomnav">
     <button class="nav-btn on" id="n0" onclick="switchTab(0)"><span class="nav-ico">◈</span><span class="nav-lbl">總覽</span></button>
     <button class="nav-btn" id="n1" onclick="switchTab(1)"><span class="nav-ico">≡</span><span class="nav-lbl">動作</span></button>
@@ -259,6 +230,7 @@ const CFG = {
   PASSWORD: '5566',
   SHEET_ID: '1hYZervTmM7aDUJmSlE187omIAPa6zMi0JHcsPVt07Rg',
   API_KEY: 'AIzaSyCxyLWIwWBIoV3JXyeb1qWi9En8qU5x4IQ',
+  RAILWAY_URL: 'https://workout-bot-production-021b.up.railway.app',
 };
 
 const CATS = ['全部','臀腿','肩背胸','核心','心肺','有氧'];
@@ -326,16 +298,10 @@ function parseInBody(rows) {
   if (!rows.length) return [];
   const start = String(rows[0][0]).includes('-') ? 0 : 1;
   return rows.slice(start).filter(r=>r[0]).map(r=>({
-    date:r[0]||'',
-    weight_kg:parseFloat(r[1])||0,
-    smm_kg:parseFloat(r[2])||0,
-    body_fat_kg:parseFloat(r[3])||0,
-    body_fat_pct:parseFloat(r[4])||0,
-    ffm_kg:parseFloat(r[5])||0,
-    bmi:parseFloat(r[6])||0,
-    whr:parseFloat(r[7])||0,
-    bmr_kcal:parseFloat(r[8])||0,
-    visceral_fat:parseFloat(r[14])||0,
+    date:r[0]||'', weight_kg:parseFloat(r[1])||0, smm_kg:parseFloat(r[2])||0,
+    body_fat_kg:parseFloat(r[3])||0, body_fat_pct:parseFloat(r[4])||0,
+    ffm_kg:parseFloat(r[5])||0, bmi:parseFloat(r[6])||0,
+    bmr_kcal:parseFloat(r[8])||0, visceral_fat:parseFloat(r[14])||0,
     fitness_score:parseFloat(r[15])||0,
   }));
 }
@@ -350,7 +316,6 @@ async function initApp() {
   ]);
   workoutRows = parseWorkout(wRaw);
   inbodyRows  = parseInBody(iRaw);
-  // Parse period rows
   window._periodRows = (pRaw||[]).filter(r=>r[0]&&String(r[0]).includes('-')).map(r=>({date:r[0]}));
   renderOverview();
   renderExercises();
@@ -369,55 +334,13 @@ function renderOverview() {
     dateSet.add(r.date);
     if (new Date(r.date)>=som) monthCount++;
   });
-
   const ibSorted = [...inbodyRows].sort((a,b)=>b.date.localeCompare(a.date));
   const lat = ibSorted[0], prv = ibSorted[1];
-
   const lastDate = dateSet.size ? [...dateSet].sort().reverse()[0] : null;
   const daysSince = lastDate ? Math.floor((now-new Date(lastDate))/86400000) : 99;
-  // 計算本週訓練次數
   const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate()-now.getDay()+1); startOfWeek.setHours(0,0,0,0);
   const weekDays = [...dateSet].filter(d=>new Date(d)>=startOfWeek).length;
-  // Cycle-aware suggestion
   const trainedToday = daysSince === 0;
-  function getCycleSuggestion() {
-    const periods = (window._periodRows||[]).map(r=>r.date).filter(Boolean).sort();
-    if (!periods.length) {
-      if (trainedToday) return '今天有訓練了，做得好！好好休息恢復 💪';
-      if (daysSince===1) return '昨天練過，今天可以主動恢復或輕鬆活動 🚶';
-      if (daysSince<=3) return '該動一動了，今天安排訓練吧！';
-      if (daysSince<=5) return '已經 '+daysSince+' 天沒練了，身體在等你回來 💪';
-      return '超過 '+daysSince+' 天了，就算10分鐘散步也好，動起來！';
-    }
-    const lastPeriod = periods[periods.length-1];
-    const cycleDay = Math.floor((now - new Date(lastPeriod)) / 86400000);
-    if (cycleDay <= 4) {
-      if (trainedToday) return '🩸 月經期還來訓練，你真的很勇！溫和就好，記得補鐵補水 🤍';
-      if (daysSince<=2) return '🩸 月經期有在動，很棒！今天可以休息或輕鬆伸展';
-      return '🩸 月經期休息完全沒問題，好好補鐵補水 🤍';
-    }
-    if (cycleDay <= 13) {
-      if (trainedToday) return '⚡ 濾泡期在衝訓練，狀態正在回升，繼續！蛋白質要吃夠 💪';
-      if (daysSince===1) return '⚡ 昨天練了，今天可休息，狀態越來越好！';
-      if (daysSince<=3) return '⚡ 濾泡期是黃金期，今天來訓練吧！代謝最好的時機';
-      return '⚡ 濾泡期已 '+daysSince+' 天沒練了，代謝最好的時期，今天動起來 💪';
-    }
-    if (cycleDay <= 16) {
-      if (trainedToday) return '🔥 排卵期在練，巔峰狀態！可以挑戰新重量 🔥';
-      if (daysSince<=2) return '🔥 排卵期狀態最好，昨天練了很棒，今天繼續衝！';
-      return '🔥 排卵期是你狀態最好的3天，'+daysSince+'天沒動，今天來挑戰一下？';
-    }
-    if (cycleDay <= 22) {
-      if (trainedToday) return '🌙 黃體期還願意來練，你很強！補充鎂和B群 🌙';
-      if (daysSince<=3) return '🌙 黃體期有在動就很好！輕訓練維持就夠了';
-      return '🌙 黃體期 '+daysSince+' 天沒動，輕重量或瑜伽就好，動一動心情會好 🌙';
-    }
-    if (trainedToday) return '💛 PMS期間還在練，真的很厲害！⚠️ 先吃蛋白質再吃其他的 💛';
-    if (daysSince<=2) return '💛 PMS期間有在動，做得好！⚠️ 暴食傾向期，避免空腹';
-    if (daysSince<=4) return '⚠️ PMS期間，輕瑜伽或散步就好，動一動心情會好 💛';
-    return '⚠️ PMS期間已 '+daysSince+' 天沒動，就算10分鐘散步也好。煩躁是荷爾蒙，不是你的錯 💛';
-  }
-  const suggestionText = getCycleSuggestion();
 
   function dval(cur,p,unit,inv) {
     if (!p) return '';
@@ -430,21 +353,78 @@ function renderOverview() {
     '<div class="mc"><div class="mc-label">本月運動次數</div><div class="mc-val">'+monthCount+'<span class="mc-unit">次</span></div><div class="mc-delta eq">本週 '+weekDays+' 天</div></div>'+
     '<div class="mc"><div class="mc-label">最新體重</div><div class="mc-val">'+(lat?lat.weight_kg:'--')+'<span class="mc-unit"> kg</span></div>'+(lat?dval(lat.weight_kg,prv?.weight_kg,' kg',true):'')+'</div>'+
     '<div class="mc"><div class="mc-label">最新體脂</div><div class="mc-val">'+(lat?lat.body_fat_pct:'--')+'<span class="mc-unit"> %</span></div>'+(lat?dval(lat.body_fat_pct,prv?.body_fat_pct,' %',true):'')+'</div>'+
-    '<div class="mc" style="grid-column:span 2;"><div class="mc-label" style="margin-bottom:6px;">今日建議</div><div style="font-size:12px;line-height:1.6;color:var(--text2);">'+suggestionText+'</div></div>';
+    '<div class="mc" style="grid-column:span 2;"><div class="mc-label" style="margin-bottom:6px;">今日建議</div><div id="advice-text" style="font-size:12px;line-height:1.6;color:var(--text2);">載入中...</div></div>';
 
-  // heatmap — align to Monday, show 4 full weeks
+  // ── AI 建議（非同步呼叫 Railway）──
+  (async () => {
+    try {
+      const periods = (window._periodRows||[]).map(r=>r.date).filter(Boolean).sort();
+      const hasPeriod = periods.length > 0;
+      let cd = 0, dtn = -1, cl = 28;
+      if (hasPeriod) {
+        const lastPeriod = periods[periods.length-1];
+        cd = Math.floor((now - new Date(lastPeriod)) / 86400000);
+        if (periods.length >= 2) {
+          const diffs = [];
+          for (let i=1;i<periods.length;i++) {
+            const diff = Math.floor((new Date(periods[i])-new Date(periods[i-1]))/86400000);
+            if (diff>18&&diff<45) diffs.push(diff);
+          }
+          if (diffs.length) cl = Math.round(diffs.reduce((a,b)=>a+b,0)/diffs.length);
+        }
+        const nextDate = new Date(periods[periods.length-1]);
+        nextDate.setDate(nextDate.getDate() + cl);
+        dtn = Math.floor((nextDate - now) / 86400000);
+      }
+      const params = new URLSearchParams({
+        cycleDay: cd, daysSince: daysSince, trainedToday: trainedToday,
+        daysToNext: dtn, cycleLen: cl, hasPeriodData: hasPeriod,
+      });
+      const resp = await fetch(CFG.RAILWAY_URL + '/get-advice?' + params.toString());
+      const data = await resp.json();
+
+      // 更新今日建議
+      const advEl = document.getElementById('advice-text');
+      if (advEl && data.advice) advEl.textContent = data.advice;
+
+      // 更新週期提示
+      const cycleEl = document.getElementById('cycle-tip');
+      if (cycleEl) {
+        if (data.phaseName && data.cycleTip) {
+          const periods2 = (window._periodRows||[]).map(r=>r.date).filter(Boolean).sort();
+          const nextDate2 = new Date(periods2[periods2.length-1]);
+          nextDate2.setDate(nextDate2.getDate() + cl);
+          const nextLabel = nextDate2.toLocaleDateString('zh-TW',{month:'long',day:'numeric'});
+          const estNote = periods2.length>=2 ? ' (週期約'+cl+'天)' : ' (累積更多紀錄後更準確)';
+          const nextInfo = dtn >= 0 && dtn <= 7
+            ? '<div style="margin-top:8px;padding:7px 10px;background:#fef0f0;border-radius:8px;font-size:11px;color:#a32d2d;">🩸 預計 '+dtn+' 天後月經來，準備鐵劑和暖暖包，本週選輕訓練。</div>'
+            : '<div style="font-size:10px;color:var(--text3);margin-top:6px;">預計下次：'+nextLabel+estNote+'</div>';
+          cycleEl.innerHTML =
+            '<div style="font-size:12px;font-weight:500;color:'+data.phaseColor+';margin-bottom:6px;">'+data.phaseEmoji+' '+data.phaseName+'（第'+(data.cycleDay+1)+'天）</div>'+
+            '<div style="font-size:12px;color:var(--text2);line-height:1.6;">'+data.cycleTip+'</div>'+
+            nextInfo;
+        } else {
+          cycleEl.innerHTML = '<div style="font-size:12px;color:var(--text3);">傳「月經」給 LINE Bot 開始記錄週期 🩸</div>';
+        }
+      }
+    } catch(e) {
+      console.error('get-advice failed:', e);
+      const advEl = document.getElementById('advice-text');
+      if (advEl) advEl.textContent = '今天繼續保持，做得到的事就是對的事 💪';
+      const cycleEl = document.getElementById('cycle-tip');
+      if (cycleEl) cycleEl.innerHTML = '<div style="font-size:12px;color:var(--text3);">傳「月經」給 LINE Bot 開始記錄週期 🩸</div>';
+    }
+  })();
+
+  // 熱力圖
   const hm = document.getElementById('heatmap');
   hm.innerHTML = '';
   const trainMap = {};
   workoutRows.forEach(r=>{ if(r.date) trainMap[r.date]=(trainMap[r.date]||0)+1; });
-  // Find last Sunday (end of current week display)
-  const todayDay = now.getDay(); // 0=Sun,1=Mon...6=Sat
-  // We want to end on the coming Sunday (or today if Sunday)
+  const todayDay = now.getDay();
   const daysToSun = todayDay === 0 ? 0 : 7 - todayDay;
   const endDate = new Date(now); endDate.setDate(now.getDate() + daysToSun);
-  // Start = 28 days before endDate
   const startDate = new Date(endDate); startDate.setDate(endDate.getDate() - 27);
-  // Period map
   const periodMap = {};
   if (window._periodRows) {
     window._periodRows.forEach(r => {
@@ -466,7 +446,6 @@ function renderOverview() {
     const div = document.createElement('div');
     div.className='hd '+(cnt===0?'':cnt<=2?'l1':cnt<=5?'l2':'l3');
     div.title=key+(cnt?' ('+cnt+'組)':'')+(isPeriod?' 🩸':'');
-    div.style.cssText = 'position:relative;';
     wrap.appendChild(div);
     if (isPeriod) {
       const dot = document.createElement('div');
@@ -476,109 +455,43 @@ function renderOverview() {
     hm.appendChild(wrap);
   }
 
-  // PR list
-  // Build PR map with best performance per exercise
+  // PR 列表
   const prExMap={};
   workoutRows.forEach(r=>{
     const name=r.exercise_name||''; if(!name) return;
-    if(!prExMap[name]) prExMap[name]={name,muscle:r.muscle_groups||'',date:'',weight:0,reps:0,sets:0,isPR:false};
+    if(!prExMap[name]) prExMap[name]={name,muscle:r.muscle_groups||'',date:'',weight:0,reps:0,isPR:false};
     const e=prExMap[name];
     const w=parseFloat(r.weight_kg||0), rp=parseInt(r.reps||0);
     if(r.date>e.date) e.date=r.date;
-    if(w>e.weight){e.weight=w; e.reps=rp;}
+    if(w>e.weight){e.weight=w;e.reps=rp;}
     if(w===e.weight&&rp>e.reps) e.reps=rp;
     if((r.is_pr||'').toUpperCase()==='TRUE') e.isPR=true;
   });
-  // Count sets per exercise per latest date
   const prSetMap={};
-  workoutRows.forEach(r=>{
-    const k=r.date+'|'+r.exercise_name;
-    prSetMap[k]=(prSetMap[k]||0)+1;
-  });
-  const prArr=Object.values(prExMap)
-    .filter(e=>e.isPR)
-    .sort((a,b)=>b.date.localeCompare(a.date))
-    .slice(0,6);
+  workoutRows.forEach(r=>{ const k=r.date+'|'+r.exercise_name; prSetMap[k]=(prSetMap[k]||0)+1; });
+  const prArr=Object.values(prExMap).filter(e=>e.isPR).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6);
   document.getElementById('pr-list').innerHTML = prArr.length
     ? prArr.map(e=>{
         const setsNum=prSetMap[e.date+'|'+e.name]||0;
         const wLabel=e.weight>0?e.weight+' kg':'自重';
         const detail=wLabel+(e.reps?' × '+e.reps+'下':'')+(setsNum?' × '+setsNum+'組':'');
-        return '<div class="pr-row">'+
-          '<div><div class="pr-name">'+e.name+'</div><div class="pr-tag">'+classifyMuscle(e.muscle)+' · '+e.date+'</div></div>'+
-          '<div class="pr-right"><div class="pr-weight">'+detail+'</div><span class="pr-badge">↑ PR</span></div>'+
-        '</div>';
+        return '<div class="pr-row"><div><div class="pr-name">'+e.name+'</div><div class="pr-tag">'+classifyMuscle(e.muscle)+' · '+e.date+'</div></div><div class="pr-right"><div class="pr-weight">'+detail+'</div><span class="pr-badge">↑ PR</span></div></div>';
       }).join('')
     : '<div class="empty">尚無 PR 紀錄</div>';
 
-  // Cycle phase tip
-  const cycleEl = document.getElementById('cycle-tip');
-  if (cycleEl) {
-    const periods = (window._periodRows||[]).map(r=>r.date).filter(Boolean).sort();
-    if (periods.length) {
-      const lastPeriod = periods[periods.length-1];
-      const daysSince = Math.floor((now - new Date(lastPeriod)) / 86400000);
-
-      // Estimate cycle length from history
-      let cycleLen = 28;
-      if (periods.length >= 2) {
-        const diffs = [];
-        for (let i=1;i<periods.length;i++) {
-          const diff = Math.floor((new Date(periods[i])-new Date(periods[i-1]))/86400000);
-          if (diff>18&&diff<45) diffs.push(diff);
-        }
-        if (diffs.length) cycleLen = Math.round(diffs.reduce((a,b)=>a+b,0)/diffs.length);
-      }
-
-      // Next period estimate
-      const nextPeriodDate = new Date(lastPeriod);
-      nextPeriodDate.setDate(nextPeriodDate.getDate() + cycleLen);
-      const daysToNext = Math.floor((nextPeriodDate - now) / 86400000);
-
-      let phase, tip, color, emoji;
-      if (daysSince <= 4) {
-        phase='月經期'; emoji='🩸'; color='#e05c5c';
-        tip='補鐵、補水｜溫和伸展或散步｜疲倦很正常，對自己好一點 🤍';
-      } else if (daysSince <= 13) {
-        phase='濾泡期'; emoji='⚡'; color='#3b6d11';
-        tip='蛋白質要夠｜衝力量或間歇跑｜狀態回來了，把握好好練 💪';
-      } else if (daysSince <= 16) {
-        phase='排卵期'; emoji='🔥'; color='#185fa5';
-        tip='均衡飲食就好｜挑戰高強度或新PR｜你現在狀態最好，相信自己 🔥';
-      } else if (daysSince <= 22) {
-        phase='黃體期'; emoji='🌙'; color='#854f0b';
-        tip='多補鎂和B群｜中低強度訓練｜情緒可能起伏，先動起來心情會好 🌙';
-      } else {
-        phase='黃體期後段'; emoji='⚠️'; color='#a32d2d';
-        tip='⚠️ 暴食傾向期：先吃蛋白質再吃其他，避免空腹｜輕重量或瑜伽｜煩躁是荷爾蒙，不是你的錯 💛';
-      }
-
-      const nextTip = daysToNext <= 7 && daysToNext >= 0
-        ? '<div style="margin-top:8px;padding:7px 10px;background:#fef0f0;border-radius:8px;font-size:11px;color:#a32d2d;">🩸 預計 '+daysToNext+' 天後月經來，準備鐵劑和暖暖包，本週選輕訓練。</div>'
-        : '<div style="font-size:10px;color:var(--text3);margin-top:6px;">預計下次：'+nextPeriodDate.toLocaleDateString('zh-TW',{month:'long',day:'numeric'})+(periods.length>=2?' (週期約'+cycleLen+'天)':' (累積更多紀錄後更準確)')+'</div>';
-
-      cycleEl.innerHTML =
-        '<div style="font-size:12px;font-weight:500;color:'+color+';margin-bottom:6px;">'+emoji+' '+phase+'（第'+(daysSince+1)+'天）</div>'+
-        '<div style="font-size:12px;color:var(--text2);line-height:1.6;">'+tip+'</div>'+
-        nextTip;
-    } else {
-      cycleEl.innerHTML = '<div style="font-size:12px;color:var(--text3);">傳「月經」給 LINE Bot 開始記錄週期 🩸</div>';
-    }
-  }
-
-  // overview InBody line chart
+  // InBody 趨勢圖
   const overviewChartEl = document.getElementById('overview-ib-chart');
   if (overviewChartEl && inbodyRows.length) {
-    const cd = [...inbodyRows].sort((a,b)=>a.date.localeCompare(b.date)).slice(-6);
+    const cd2 = [...inbodyRows].sort((a,b)=>a.date.localeCompare(b.date)).slice(-6);
     if (window._overviewIbChart) window._overviewIbChart.destroy();
     window._overviewIbChart = new Chart(overviewChartEl, {
       type:'line',
       data:{
-        labels: cd.map(r=>r.date.slice(5).replace('-','/')),
+        labels:cd2.map(r=>r.date.slice(5).replace('-','/')),
         datasets:[
-          {data:cd.map(r=>r.weight_kg||null),borderColor:'#185fa5',backgroundColor:'rgba(24,95,165,0.07)',borderWidth:2,pointRadius:3,fill:true,tension:0.35,yAxisID:'y'},
-          {data:cd.map(r=>r.smm_kg||null),borderColor:'#3b6d11',backgroundColor:'rgba(59,109,17,0.07)',borderWidth:2,pointRadius:3,fill:true,tension:0.35,yAxisID:'y'},
-          {data:cd.map(r=>r.body_fat_pct||null),borderColor:'#993c1d',backgroundColor:'rgba(153,60,29,0.05)',borderWidth:2,pointRadius:3,fill:true,tension:0.35,yAxisID:'y2'},
+          {data:cd2.map(r=>r.weight_kg||null),borderColor:'#185fa5',backgroundColor:'rgba(24,95,165,0.07)',borderWidth:2,pointRadius:3,fill:true,tension:0.35,yAxisID:'y'},
+          {data:cd2.map(r=>r.smm_kg||null),borderColor:'#3b6d11',backgroundColor:'rgba(59,109,17,0.07)',borderWidth:2,pointRadius:3,fill:true,tension:0.35,yAxisID:'y'},
+          {data:cd2.map(r=>r.body_fat_pct||null),borderColor:'#993c1d',backgroundColor:'rgba(153,60,29,0.05)',borderWidth:2,pointRadius:3,fill:true,tension:0.35,yAxisID:'y2'},
         ]
       },
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
@@ -605,29 +518,21 @@ function setMuscleFilter(m) {
 }
 function filterEx() {
   const q=(document.getElementById('ex-search').value||'').toLowerCase();
-  const exMap={};
-  const setMap={};
+  const exMap={}, setMap={};
   workoutRows.forEach(r=>{
     const name=r.exercise_name||''; if(!name) return;
     if(!exMap[name]) exMap[name]={name,muscle:r.muscle_groups||'',cat:classifyMuscle(r.muscle_groups),latestDate:'',latestWeight:0,latestReps:0,latestSec:0,bestWeight:0};
     const e=exMap[name];
-    const w=parseFloat(r.weight_kg||0), rp=parseInt(r.reps||0), sec=parseInt(r.duration_sec||0);
+    const w=parseFloat(r.weight_kg||0),rp=parseInt(r.reps||0),sec=parseInt(r.duration_sec||0);
     if(r.date>e.latestDate){e.latestDate=r.date;e.latestWeight=w;e.latestReps=rp;e.latestSec=sec;}
     if(w>e.bestWeight) e.bestWeight=w;
-    const k=r.date+'|'+name;
-    setMap[k]=(setMap[k]||0)+1;
+    const k=r.date+'|'+name; setMap[k]=(setMap[k]||0)+1;
   });
   let arr=Object.values(exMap);
   if(activeMuscleFilter!=='全部') arr=arr.filter(e=>e.cat===activeMuscleFilter);
   if(q) arr=arr.filter(e=>e.name.toLowerCase().includes(q));
   arr.sort((a,b)=>b.latestDate.localeCompare(a.latestDate));
-  function secToDisplay(sec) {
-    if (!sec || sec <= 0) return null;
-    if (sec < 60) return sec + '秒';
-    const m = Math.floor(sec/60), s = sec%60;
-    return s > 0 ? m+'分'+s+'秒' : m+'分鐘';
-  }
-
+  function secToDisplay(sec){if(!sec||sec<=0)return null;if(sec<60)return sec+'秒';const m=Math.floor(sec/60),s=sec%60;return s>0?m+'分'+s+'秒':m+'分鐘';}
   document.getElementById('ex-table').innerHTML=arr.length?arr.map(e=>{
     const setsNum=setMap[e.latestDate+'|'+e.name]||1;
     let top,bot='';
@@ -662,7 +567,7 @@ function renderLogList() {
   const weekMap={};
   rows.forEach(r=>{
     if(!r.date) return;
-    const dt=new Date(r.date), day=dt.getDay()||7;
+    const dt=new Date(r.date),day=dt.getDay()||7;
     const mon=new Date(dt); mon.setDate(dt.getDate()-day+1);
     const wk=mon.toISOString().slice(0,10);
     if(!weekMap[wk]) weekMap[wk]={mon,rows:[]};
@@ -693,15 +598,9 @@ function renderLogList() {
         const maxSec=Math.max(...ex.sets.map(s=>parseInt(s.duration_sec||0)));
         const lastReps=ex.sets[ex.sets.length-1]?.reps||'';
         function secFmt(s){if(!s||s<=0)return null;if(s<60)return s+'秒';const m=Math.floor(s/60),r=s%60;return r>0?m+'分'+r+'秒':m+'分鐘';}
-        const detail=maxSec>0&&maxW===0
-          ? secFmt(maxSec)+' × '+setsNum+'組'
-          : (maxW>0?maxW+' kg':'自重')+(lastReps?' × '+lastReps+'下':'')+' × '+setsNum+'組';
+        const detail=maxSec>0&&maxW===0?secFmt(maxSec)+' × '+setsNum+'組':(maxW>0?maxW+' kg':'自重')+(lastReps?' × '+lastReps+'下':'')+' × '+setsNum+'組';
         const cat=classifyMuscle(ex.muscle);
-        return '<div class="log-item">'+
-          '<div class="log-top"><div class="log-name">'+ex.name+'</div><div class="log-date-lbl">'+date.slice(5).replace('-','/')+'</div></div>'+
-          '<div class="log-detail">'+detail+'</div>'+
-          '<div class="log-chips"><span class="log-chip muscle">'+cat+'</span>'+(ex.isPR?'<span class="log-chip pr">PR</span>':'')+(ex.note?'<span class="log-chip">'+ex.note+'</span>':'')+'</div>'+
-        '</div>';
+        return '<div class="log-item"><div class="log-top"><div class="log-name">'+ex.name+'</div><div class="log-date-lbl">'+date.slice(5).replace('-','/')+'</div></div><div class="log-detail">'+detail+'</div><div class="log-chips"><span class="log-chip muscle">'+cat+'</span>'+(ex.isPR?'<span class="log-chip pr">PR</span>':'')+(ex.note?'<span class="log-chip">'+ex.note+'</span>':'')+'</div></div>';
       }).join('');
     }).join('');
     return `<div class="week-block"><div class="week-head"><div class="week-range">${label}</div><div class="week-stat">${dayCount}天 · ${totalVol.toLocaleString()}kg</div></div>${items}</div>`;
@@ -715,7 +614,7 @@ function renderInBody() {
     return;
   }
   const sorted=[...inbodyRows].sort((a,b)=>b.date.localeCompare(a.date));
-  const lat=sorted[0], prv=sorted[1];
+  const lat=sorted[0],prv=sorted[1];
   function delta(cur,p,unit,inv){
     if(!p) return '';
     const d=(parseFloat(cur)-parseFloat(p)).toFixed(1);
@@ -728,28 +627,10 @@ function renderInBody() {
   if(mscChg>0&&fatChg<0){stText='增肌減脂進行中 🎉';stCls='pill-green';}
   else if(mscChg>0){stText='肌肉增加中';stCls='pill-green';}
   else if(fatChg<0){stText='體脂下降中';stCls='pill-green';}
-
-  // fitness score progress bar
-  const score = lat.fitness_score||0;
-  const scoreBar = score ? '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--surface2);">'+
-    '<div style="display:flex;justify-content:space-between;margin-bottom:6px;">'+
-      '<span style="font-size:12px;color:var(--text2);">健身評分</span>'+
-      '<span style="font-size:14px;font-weight:500;">'+(score)+' 分'+(prv?.fitness_score?'<span style="font-size:11px;color:'+(score>prv.fitness_score?'var(--green)':'var(--red)')+'"> ('+(score>prv.fitness_score?'+':'')+(score-prv.fitness_score)+')</span>':'')+'</span>'+
-    '</div>'+
-    '<div style="background:var(--surface2);border-radius:4px;height:6px;">'+
-      '<div style="background:var(--green);border-radius:4px;height:6px;width:'+Math.min(score,100)+'%;transition:width .5s;"></div>'+
-    '</div>'+
-    '<div style="display:flex;justify-content:space-between;margin-top:3px;">'+
-      '<span style="font-size:9px;color:var(--text3);">0</span>'+
-      '<span style="font-size:9px;color:var(--text3);">100</span>'+
-    '</div>'+
-  '</div>' : '';
-
+  const score=lat.fitness_score||0;
+  const scoreBar=score?'<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--surface2);"><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">健身評分</span><span style="font-size:14px;font-weight:500;">'+score+' 分'+(prv?.fitness_score?'<span style="font-size:11px;color:'+(score>prv.fitness_score?'var(--green)':'var(--red)')+'"> ('+(score>prv.fitness_score?'+':'')+(score-prv.fitness_score)+')</span>':'')+'</span></div><div style="background:var(--surface2);border-radius:4px;height:6px;"><div style="background:var(--green);border-radius:4px;height:6px;width:'+Math.min(score,100)+'%;"></div></div><div style="display:flex;justify-content:space-between;margin-top:3px;"><span style="font-size:9px;color:var(--text3);">0</span><span style="font-size:9px;color:var(--text3);">100</span></div></div>':'';
   document.getElementById('ib-latest').innerHTML=
-    '<div style="display:flex;justify-content:space-between;margin-bottom:14px;">'+
-      '<div style="font-size:15px;font-weight:500;">最新測量</div>'+
-      '<div style="font-size:11px;color:var(--text3);">'+lat.date+'</div>'+
-    '</div>'+
+    '<div style="display:flex;justify-content:space-between;margin-bottom:14px;"><div style="font-size:15px;font-weight:500;">最新測量</div><div style="font-size:11px;color:var(--text3);">'+lat.date+'</div></div>'+
     '<div class="ib-grid">'+
       '<div class="ib-item"><div class="ib-label">體重</div><div class="ib-val">'+lat.weight_kg+'<span class="ib-unit"> kg</span></div>'+delta(lat.weight_kg,prv?.weight_kg,' kg',true)+'</div>'+
       '<div class="ib-item"><div class="ib-label">骨骼肌重</div><div class="ib-val">'+lat.smm_kg+'<span class="ib-unit"> kg</span></div>'+delta(lat.smm_kg,prv?.smm_kg,' kg',false)+'</div>'+
@@ -760,42 +641,21 @@ function renderInBody() {
       '<div class="ib-item"><div class="ib-label">基礎代謝</div><div class="ib-val">'+lat.bmr_kcal+'<span class="ib-unit"> kcal</span></div>'+delta(lat.bmr_kcal,prv?.bmr_kcal,' kcal',false)+'</div>'+
       '<div class="ib-item"><div class="ib-label">內臟脂肪等級</div><div class="ib-val">'+lat.visceral_fat+'<span class="ib-unit"> 級</span></div>'+delta(lat.visceral_fat,prv?.visceral_fat,' 級',true)+'</div>'+
     '</div>'+
-    '<span class="status-pill '+stCls+'">'+stText+'</span>'+
-    scoreBar;
+    '<span class="status-pill '+stCls+'">'+stText+'</span>'+scoreBar;
 
-  // Chart 1: 體重 & 骨骼肌 (kg scale)
   const cd=sorted.slice(0,6).reverse();
   const labels=cd.map(r=>r.date.slice(5).replace('-','/'));
   if(ibChart) ibChart.destroy();
-  ibChart=new Chart(document.getElementById('ib-chart'),{type:'line',data:{
-    labels,
-    datasets:[
-      {label:'體重',data:cd.map(r=>r.weight_kg||null),borderColor:'#185fa5',backgroundColor:'rgba(24,95,165,0.1)',borderWidth:2,pointRadius:4,fill:true,tension:0.35},
-      {label:'骨骼肌',data:cd.map(r=>r.smm_kg||null),borderColor:'#3b6d11',backgroundColor:'rgba(59,109,17,0.1)',borderWidth:2,pointRadius:4,fill:true,tension:0.35},
-      {label:'體脂肪量',data:cd.map(r=>r.body_fat_kg||null),borderColor:'#993c1d',backgroundColor:'rgba(153,60,29,0.08)',borderWidth:2,pointRadius:4,fill:true,tension:0.35},
-    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{
-        y:{ticks:{font:{size:10},callback:v=>v+'kg'},grid:{color:'rgba(0,0,0,0.05)'}},
-        x:{ticks:{font:{size:10}},grid:{display:false}}
-      }}
-  });
+  ibChart=new Chart(document.getElementById('ib-chart'),{type:'line',data:{labels,datasets:[
+    {data:cd.map(r=>r.weight_kg||null),borderColor:'#185fa5',backgroundColor:'rgba(24,95,165,0.1)',borderWidth:2,pointRadius:4,fill:true,tension:0.35},
+    {data:cd.map(r=>r.smm_kg||null),borderColor:'#3b6d11',backgroundColor:'rgba(59,109,17,0.1)',borderWidth:2,pointRadius:4,fill:true,tension:0.35},
+    {data:cd.map(r=>r.body_fat_kg||null),borderColor:'#993c1d',backgroundColor:'rgba(153,60,29,0.08)',borderWidth:2,pointRadius:4,fill:true,tension:0.35},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{font:{size:10},callback:v=>v+'kg'},grid:{color:'rgba(0,0,0,0.05)'}},x:{ticks:{font:{size:10}},grid:{display:false}}}}});
 
-  // Chart 2: 體脂率 (separate)
   const c2el=document.getElementById('ib-chart2');
   if(c2el){
     if(window.ibChart2) window.ibChart2.destroy();
-    window.ibChart2=new Chart(c2el,{type:'line',data:{
-      labels,
-      datasets:[{
-        label:'體脂率',data:cd.map(r=>r.body_fat_pct||null),
-        borderColor:'#993c1d',backgroundColor:'rgba(153,60,29,0.08)',
-        borderWidth:2,pointRadius:4,fill:true,tension:0.35
-      }]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-        scales:{
-          y:{ticks:{font:{size:10},callback:v=>v+'%'},grid:{color:'rgba(0,0,0,0.05)'},min:30,max:50},
-          x:{ticks:{font:{size:10}},grid:{display:false}}
-        }}
-    });
+    window.ibChart2=new Chart(c2el,{type:'line',data:{labels,datasets:[{data:cd.map(r=>r.body_fat_pct||null),borderColor:'#993c1d',backgroundColor:'rgba(153,60,29,0.08)',borderWidth:2,pointRadius:4,fill:true,tension:0.35}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{font:{size:10},callback:v=>v+'%'},grid:{color:'rgba(0,0,0,0.05)'},min:30,max:50},x:{ticks:{font:{size:10}},grid:{display:false}}}}});
   }
 }
 </script>
