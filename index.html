@@ -397,12 +397,21 @@ function renderOverview() {
           const nextLabel = nextDate2.toLocaleDateString('zh-TW',{month:'long',day:'numeric'});
           const estNote = periods2.length>=2 ? ' (週期約'+cl+'天)' : ' (累積更多紀錄後更準確)';
           const nextInfo = dtn >= 0 && dtn <= 7
-            ? '<div style="margin-top:8px;padding:7px 10px;background:#fef0f0;border-radius:8px;font-size:11px;color:#a32d2d;">🩸 預計 '+dtn+' 天後月經來，準備鐵劑和暖暖包，本週選輕訓練。</div>'
+            ? '<div style="margin-top:8px;padding:6px 10px;background:#fef0f0;border-radius:8px;font-size:11px;color:#a32d2d;">🩸 預計 '+dtn+' 天後月經，本週輕訓練，準備鐵劑。</div>'
             : '<div style="font-size:10px;color:var(--text3);margin-top:6px;">預計下次：'+nextLabel+estNote+'</div>';
+          // 把3行格式轉成帶標籤的顯示
+          const tipLines = data.cycleTip.split('\n').filter(l=>l.trim());
+          const tipLabels = ['身體狀態', '注意事項', '行動建議'];
+          const tipColors = ['var(--text2)', '#a32d2d', 'var(--green)'];
+          const tipHtml = tipLines.map((line,i) =>
+            '<div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:5px;">' +
+              '<span style="font-size:10px;color:var(--text3);white-space:nowrap;padding-top:1px;min-width:52px;">'+(tipLabels[i]||'')+'</span>' +
+              '<span style="font-size:12px;color:'+(tipColors[i]||'var(--text2)')+';">'+line.trim()+'</span>' +
+            '</div>'
+          ).join('');
           cycleEl.innerHTML =
-            '<div style="font-size:12px;font-weight:500;color:'+data.phaseColor+';margin-bottom:6px;">'+data.phaseEmoji+' '+data.phaseName+'（第'+(data.cycleDay+1)+'天）</div>'+
-            '<div style="font-size:12px;color:var(--text2);line-height:1.6;">'+data.cycleTip+'</div>'+
-            nextInfo;
+            '<div style="font-size:12px;font-weight:500;color:'+data.phaseColor+';margin-bottom:8px;">'+data.phaseEmoji+' '+data.phaseName+'（第'+(data.cycleDay+1)+'天）</div>'+
+            tipHtml+nextInfo;
         } else {
           cycleEl.innerHTML = '<div style="font-size:12px;color:var(--text3);">傳「月經」給 LINE Bot 開始記錄週期 🩸</div>';
         }
