@@ -230,7 +230,7 @@ const CFG = {
   PASSWORD: '5566',
   SHEET_ID: '1hYZervTmM7aDUJmSlE187omIAPa6zMi0JHcsPVt07Rg',
   API_KEY: 'AIzaSyCxyLWIwWBIoV3JXyeb1qWi9En8qU5x4IQ',
-  RAILWAY_URL: 'https://workout-bot-6vqb.onrender.com',
+  RAILWAY_URL: 'https://workout-bot-production-021b.up.railway.app',
 };
 
 const CATS = ['全部','臀腿','肩背胸','核心','心肺','有氧'];
@@ -312,11 +312,27 @@ async function initApp() {
   const [wRaw, iRaw, pRaw] = await Promise.all([
     fetchRange('Workout!A:M'),
     fetchRange('InBody!A:V'),
-    fetchRange('Period!A:B'),
+    fetchRange('Period!A:C'),
   ]);
   workoutRows = parseWorkout(wRaw);
   inbodyRows  = parseInBody(iRaw);
-  window._periodRows = (pRaw||[]).filter(r=>r[0]&&String(r[0]).includes('-')).map(r=>({date:r[0]}));
+  // Parse period data: find start dates and end dates
+  const periodData = (pRaw||[]).filter(r=>r[0]&&String(r[0]).includes('-'));
+  // Extract completed cycles (start date + end date)
+  const periodCycles = [];
+  let currentStart = null;
+  periodData.forEach(r => {
+    if (r[1] === '開始') currentStart = r[0];
+    if (r[1] === '結束' && currentStart) {
+      periodCycles.push({ start: currentStart, end: r[0] });
+      currentStart = null;
+    }
+  });
+  // If there's an open cycle (started but not ended), add it
+  if (currentStart) periodCycles.push({ start: currentStart, end: null });
+  window._periodCycles = periodCycles;
+  // For heatmap: all period dates
+  window._periodRows = periodData.map(r=>({date:r[0], label:r[1]}));
   renderOverview();
   renderExercises();
   renderLog();
@@ -358,21 +374,37 @@ function renderOverview() {
   // ── AI 建議（非同步呼叫 Railway）──
   (async () => {
     try {
-      const periods = (window._periodRows||[]).map(r=>r.date).filter(Boolean).sort();
-      const hasPeriod = periods.length > 0;
+      const cycles = window._periodCycles || [];
+      const hasPeriod = cycles.length > 0;
       let cd = 0, dtn = -1, cl = 28;
       if (hasPeriod) {
-        const lastPeriod = periods[periods.length-1];
-        cd = Math.floor((now - new Date(lastPeriod)) / 86400000);
-        if (periods.length >= 2) {
+        const lastCycle = cycles[cycles.length - 1];
+        const startDate = new Date(lastCycle.start);
+        const endDate = lastCycle.end ? new Date(lastCycle.end) : null;
+
+        // Calculate cycle length from completed cycles (start to start)
+        if (cycles.length >= 2) {
           const diffs = [];
-          for (let i=1;i<periods.length;i++) {
-            const diff = Math.floor((new Date(periods[i])-new Date(periods[i-1]))/86400000);
-            if (diff>18&&diff<45) diffs.push(diff);
+          for (let i = 1; i < cycles.length; i++) {
+            const diff = Math.floor((new Date(cycles[i].start) - new Date(cycles[i-1].start)) / 86400000);
+            if (diff > 18 && diff < 60) diffs.push(diff);
           }
           if (diffs.length) cl = Math.round(diffs.reduce((a,b)=>a+b,0)/diffs.length);
         }
-        const nextDate = new Date(periods[periods.length-1]);
+
+        // Correct cycleDay calculation:
+        // If still in period (no end date or today <= end date): days since start
+        // If period ended: days since start (includes period days + days after)
+        if (!endDate || now <= endDate) {
+          // Still in period
+          cd = Math.floor((now - startDate) / 86400000);
+        } else {
+          // Period ended, count from start date
+          cd = Math.floor((now - startDate) / 86400000);
+        }
+
+        // Next period: from start date + cycle length
+        const nextDate = new Date(lastCycle.start);
         nextDate.setDate(nextDate.getDate() + cl);
         dtn = Math.floor((nextDate - now) / 86400000);
       }
@@ -391,11 +423,12 @@ function renderOverview() {
       const cycleEl = document.getElementById('cycle-tip');
       if (cycleEl) {
         if (data.phaseName && data.cycleTip) {
-          const periods2 = (window._periodRows||[]).map(r=>r.date).filter(Boolean).sort();
-          const nextDate2 = new Date(periods2[periods2.length-1]);
+          const cycles2 = window._periodCycles || [];
+          const lastStart2 = cycles2.length ? cycles2[cycles2.length-1].start : null;
+          const nextDate2 = lastStart2 ? new Date(lastStart2) : new Date();
           nextDate2.setDate(nextDate2.getDate() + cl);
           const nextLabel = nextDate2.toLocaleDateString('zh-TW',{month:'long',day:'numeric'});
-          const estNote = periods2.length>=2 ? ' (週期約'+cl+'天)' : ' (累積更多紀錄後更準確)';
+          const estNote = cycles2.length>=2 ? ' (週期約'+cl+'天)' : ' (累積更多紀錄後更準確)';
           const nextInfo = dtn >= 0 && dtn <= 7
             ? '<div style="margin-top:8px;padding:6px 10px;background:#fef0f0;border-radius:8px;font-size:11px;color:#a32d2d;">🩸 預計 '+dtn+' 天後月經，本週輕訓練，準備鐵劑。</div>'
             : '<div style="font-size:10px;color:var(--text3);margin-top:6px;">預計下次：'+nextLabel+estNote+'</div>';
@@ -435,12 +468,12 @@ function renderOverview() {
   const endDate = new Date(now); endDate.setDate(now.getDate() + daysToSun);
   const startDate = new Date(endDate); startDate.setDate(endDate.getDate() - 27);
   const periodMap = {};
-  if (window._periodRows) {
-    window._periodRows.forEach(r => {
-      if (!r.date) return;
-      const s = new Date(r.date);
-      for (let i = 0; i < 5; i++) {
-        const d = new Date(s); d.setDate(s.getDate() + i);
+  if (window._periodCycles) {
+    window._periodCycles.forEach(cycle => {
+      const s = new Date(cycle.start);
+      const e = cycle.end ? new Date(cycle.end) : new Date(s);
+      e.setDate(e.getDate());
+      for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
         periodMap[d.toISOString().slice(0,10)] = true;
       }
     });
