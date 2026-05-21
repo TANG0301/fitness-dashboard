@@ -292,7 +292,7 @@ function parseWorkout(rows) {
     muscle_groups:r[3]||'', set:r[4]||'',
     weight_kg:r[5]||'', reps:r[6]||'', duration_sec:r[7]||'',
     max_weight_kg:r[8]||'', is_pr:r[9]||'FALSE', note:r[11]||'',
-    weight_raw:r[13]||'', weight_unit:r[14]||'kg',
+    weight_raw:r[13]||'', weight_unit:r[14]||'', resistance:r[15]||'',
   }));
 }
 function parseInBody(rows) {
@@ -311,7 +311,7 @@ async function initApp() {
   document.getElementById('topbar-date').textContent =
     new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'long'});
   const [wRaw, iRaw, pRaw] = await Promise.all([
-    fetchRange('Workout!A:O'),
+    fetchRange('Workout!A:P'),
     fetchRange('InBody!A:V'),
     fetchRange('Period!A:C'),
   ]);
@@ -561,49 +561,80 @@ function setMuscleFilter(m) {
 }
 function filterEx() {
   const q=(document.getElementById('ex-search').value||'').toLowerCase();
-  const exMap={}, setMap={};
+  // Group rows by exercise name, collect all sets per date
+  const exMap={};
   workoutRows.forEach(r=>{
     const name=r.exercise_name||''; if(!name) return;
     if(!exMap[name]) exMap[name]={
       name, muscle:r.muscle_groups||'', cat:classifyMuscle(r.muscle_groups),
-      latestDate:'', latestWeight:0, latestReps:0, latestSec:0, latestUnit:'kg', latestRaw:0,
-      bestWeightKg:0, bestReps:0, bestSets:0, bestRaw:0, bestUnit:'kg', bestDate:''
+      latestDate:'', latestSets:[], type:r.type||'',
+      bestWeightKg:0, bestReps:0, bestSetsCount:0, bestRaw:0, bestUnit:'kg'
     };
     const e=exMap[name];
-    const wKg=parseFloat(r.weight_kg||0), rp=parseInt(r.reps||0), sec=parseInt(r.duration_sec||0);
-    const wRaw=parseFloat(r.weight_raw||0)||wKg, wUnit=r.weight_unit||'kg';
-    // Latest date tracking
-    if(r.date>e.latestDate){e.latestDate=r.date;e.latestWeight=wKg;e.latestReps=rp;e.latestSec=sec;e.latestUnit=wUnit;e.latestRaw=wRaw||wKg;}
-    // Best tracking: weight > reps > sets
-    const k=r.date+'|'+name; setMap[k]=(setMap[k]||0)+1;
-    const curSets=setMap[k];
-    if(wKg>e.bestWeightKg){
-      e.bestWeightKg=wKg; e.bestReps=rp; e.bestSets=curSets; e.bestRaw=wRaw||wKg; e.bestUnit=wUnit; e.bestDate=r.date;
-    } else if(wKg===e.bestWeightKg && rp>e.bestReps){
-      e.bestReps=rp; e.bestSets=curSets; e.bestRaw=wRaw||wKg; e.bestUnit=wUnit; e.bestDate=r.date;
-    } else if(wKg===e.bestWeightKg && rp===e.bestReps && curSets>e.bestSets){
-      e.bestSets=curSets; e.bestRaw=wRaw||wKg; e.bestUnit=wUnit; e.bestDate=r.date;
-    }
+    const wKg=parseFloat(r.weight_kg||0), rp=parseInt(r.reps||0);
+    const wRaw=parseFloat(r.weight_raw||r.weight_kg||0), wUnit=r.weight_unit||'kg';
+    const sec=parseInt(r.duration_sec||0), res=r.resistance||'';
+    if(r.date>e.latestDate){ e.latestDate=r.date; e.latestSets=[]; e.type=r.type||''; }
+    if(r.date===e.latestDate) e.latestSets.push({wKg,wRaw,wUnit,rp,sec,res,set:parseInt(r.set||0)});
+    // Best: weight > reps > sets
+    const setCount = workoutRows.filter(x=>x.date===r.date&&x.exercise_name===name).length;
+    if(wKg>e.bestWeightKg){e.bestWeightKg=wKg;e.bestReps=rp;e.bestSetsCount=setCount;e.bestRaw=wRaw;e.bestUnit=wUnit;}
+    else if(wKg===e.bestWeightKg&&rp>e.bestReps){e.bestReps=rp;e.bestSetsCount=setCount;e.bestRaw=wRaw;e.bestUnit=wUnit;}
+    else if(wKg===e.bestWeightKg&&rp===e.bestReps&&setCount>e.bestSetsCount){e.bestSetsCount=setCount;e.bestRaw=wRaw;e.bestUnit=wUnit;}
   });
   let arr=Object.values(exMap);
   if(activeMuscleFilter!=='全部') arr=arr.filter(e=>e.cat===activeMuscleFilter);
   if(q) arr=arr.filter(e=>e.name.toLowerCase().includes(q));
   arr.sort((a,b)=>b.latestDate.localeCompare(a.latestDate));
-  function secToDisplay(sec){if(!sec||sec<=0)return null;if(sec<60)return sec+'秒';const m=Math.floor(sec/60),s=sec%60;return s>0?m+'分'+s+'秒':m+'分鐘';}
+
+  function secFmt(s){if(!s||s<=0)return null;if(s<60)return s+'秒';const m=Math.floor(s/60),r=s%60;return r>0?m+'分'+r+'秒':m+'分鐘';}
+  function wLabel(wKg,wRaw,wUnit){
+    if(!wKg&&wKg!==0) return '自重';
+    if(wKg===0) return '自重';
+    return (wRaw&&wUnit==='lb') ? wRaw+' lb' : wKg+' kg';
+  }
+
   document.getElementById('ex-table').innerHTML=arr.length?arr.map(e=>{
-    const setsNum=setMap[e.latestDate+'|'+e.name]||1;
-    let top,bot='';
-    if(e.latestSec>0&&e.latestWeight===0){
-      top=secToDisplay(e.latestSec)+' × '+setsNum+'組';
+    const sets=e.latestSets.sort((a,b)=>a.set-b.set);
+    const isCardio=e.type==='cardio'||e.type==='warmup';
+    let topLines='', bot='';
+
+    if(isCardio){
+      // Group by resistance for cardio display
+      const hasRes=sets.some(s=>s.res);
+      const hasSec=sets.some(s=>s.sec>0);
+      const allReps=sets.map(s=>s.rp).filter(r=>r>0);
+      const allSec=sets.filter(s=>s.sec>0);
+      // Check if all same duration
+      const secSet=new Set(allSec.map(s=>s.sec));
+      const resList=sets.map(s=>s.res).filter(Boolean);
+      const resVal=resList.length&&new Set(resList).size===1?resList[0]:'';
+      if(secSet.size===1&&allSec.length===sets.length){
+        // All same duration
+        const durStr=secFmt(allSec[0].sec);
+        const repsStr=allReps.length?'（'+allReps.join('/')+' 下）':'';
+        topLines=(resVal?'阻力'+resVal+' · ':'')+durStr+repsStr+' × '+sets.length+'組';
+      } else if(allSec.length>0){
+        topLines=sets.map(s=>(s.res?'阻力'+s.res+' · ':'')+secFmt(s.sec)+(s.rp?' '+s.rp+'下':'')).join(' / ')+' × '+sets.length+'組';
+      } else {
+        topLines=sets.length+'組';
+      }
     } else {
-      const latestWLabel=e.latestWeight>0?(e.latestRaw&&e.latestUnit==='lb'?e.latestRaw+' lb':e.latestWeight+' kg'):'自重';
-      const bestWLabel=e.bestWeightKg>0?(e.bestRaw&&e.bestUnit==='lb'?e.bestRaw+' lb':e.bestWeightKg+' kg'):'自重';
-      const repsStr=e.latestReps>0?' × '+e.latestReps+'下':'';
-      top=latestWLabel+repsStr+' × '+setsNum+'組';
-      const isCurrentBest=e.latestWeight>=e.bestWeightKg;
-      bot='<div class="ex-best '+(isCurrentBest?'hi':'')+'">最佳 '+bestWLabel+(e.bestReps?' × '+e.bestReps+'下':'')+(e.bestSets?' × '+e.bestSets+'組':'')+'</div>';
+      // Strength: group consecutive same-weight sets
+      const groups=[];
+      sets.forEach(s=>{
+        const last=groups[groups.length-1];
+        if(last&&last.wKg===s.wKg&&last.rp===s.rp) last.count++;
+        else groups.push({wKg:s.wKg,wRaw:s.wRaw,wUnit:s.wUnit,rp:s.rp,count:1});
+      });
+      const lines=groups.map(g=>wLabel(g.wKg,g.wRaw,g.wUnit)+(g.rp?' × '+g.rp+'下':'')+' × '+g.count+'組');
+      topLines=lines.join('<br>');
+      // Best record
+      const bw=e.bestWeightKg>0?(e.bestRaw&&e.bestUnit==='lb'?e.bestRaw+' lb':e.bestWeightKg+' kg'):'自重';
+      const isBest=sets.some(s=>s.wKg>=e.bestWeightKg&&s.wKg>0);
+      bot='<div class="ex-best '+(isBest?'hi':'')+'">最佳 '+bw+(e.bestReps?' × '+e.bestReps+'下':'')+(e.bestSetsCount?' × '+e.bestSetsCount+'組':'')+'</div>';
     }
-    return '<div class="ex-row"><div><div class="ex-name">'+e.name+'</div><div class="ex-meta">'+e.latestDate+'</div></div><div class="ex-right"><div class="ex-cur">'+top+'</div>'+bot+'</div></div>';
+    return '<div class="ex-row"><div><div class="ex-name">'+e.name+'</div><div class="ex-meta">'+e.latestDate+'</div></div><div class="ex-right" style="text-align:right;"><div class="ex-cur" style="line-height:1.7;">'+topLines+'</div>'+bot+'</div></div>';
   }).join(''):'<div class="empty">沒有符合的動作</div>';
 }
 
