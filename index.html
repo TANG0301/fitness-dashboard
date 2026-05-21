@@ -307,14 +307,20 @@ async function fetchRange(range) {
 function parseWorkout(rows) {
   if (!rows.length) return [];
   const start = String(rows[0][0]).includes('-') ? 0 : 1;
-  return rows.slice(start).filter(r=>r[0]&&r[1]).map(r=>({
-    date:r[0]||'', exercise_name:r[1]||'', type:r[2]||'',
-    muscle_groups:r[3]||'', set:r[4]||'',
-    weight_kg:r[5]||'', reps:r[6]||'', duration_sec:r[7]||'',
-    max_weight_kg:r[8]||'', is_pr:r[9]||'FALSE', note:r[11]||'',
-    superset_group:r[12]||'',
-    weight_raw:r[13]||'', weight_unit:r[14]||'', resistance:r[15]||'',
-  }));
+  return rows.slice(start).filter(r=>r[0]&&r[1]).map(r=>{
+    // superset_group 只接受純數字（>0），其他一律當作沒填
+    const sgRaw = (r[12]||'').toString().trim();
+    const sgNum = parseInt(sgRaw);
+    const sg = (!isNaN(sgNum) && sgNum > 0 && /^\d+$/.test(sgRaw)) ? sgNum.toString() : '';
+    return {
+      date:r[0]||'', exercise_name:r[1]||'', type:r[2]||'',
+      muscle_groups:r[3]||'', set:r[4]||'',
+      weight_kg:r[5]||'', reps:r[6]||'', duration_sec:r[7]||'',
+      max_weight_kg:r[8]||'', is_pr:r[9]||'FALSE', note:r[11]||'',
+      superset_group:sg,
+      weight_raw:r[13]||'', weight_unit:r[14]||'', resistance:r[15]||'',
+    };
+  });
 }
 function parseInBody(rows) {
   if (!rows.length) return [];
@@ -577,51 +583,48 @@ function renderExerciseSets(name, ex){
   const isCardio = ex.type==='cardio' || ex.type==='warmup';
 
   if(isCardio){
-    // 阻力（如果全部相同就提到前面）
-    const resList = sets.map(s=>s.res).filter(v=>v!=='' && v!=null);
-    const allSameRes = resList.length===sets.length && new Set(resList).size===1;
-    const resVal = allSameRes ? resList[0] : null;
+    // 把每組屬性抓出來
+    const resArr = sets.map(s=>(s.res===''||s.res==null)?null:s.res);
+    const secArr = sets.map(s=>s.sec>0?s.sec:null);
+    const wArr = sets.map(s=>fmtWeight(s.wKg, s.wRaw, s.wUnit));
+    const repsArr = sets.map(s=>s.rp>0?s.rp:null);
 
-    // 時間
-    const secList = sets.map(s=>s.sec).filter(v=>v>0);
-    const allSameSec = secList.length===sets.length && new Set(secList).size===1;
-    const secVal = allSameSec && secList.length ? secList[0] : null;
+    // 判斷各屬性是否所有組都一致（含全為 null 的情況）
+    const allEqual = arr => new Set(arr.map(v=>v===null?'__null__':String(v))).size===1;
+    const sameRes = allEqual(resArr);
+    const sameSec = allEqual(secArr);
+    const sameW = allEqual(wArr);
 
-    // 重量（同上）
-    const wLabels = sets.map(s=>fmtWeight(s.wKg, s.wRaw, s.wUnit)).filter(Boolean);
-    const allSameW = wLabels.length===sets.length && new Set(wLabels).size===1;
-    const wVal = allSameW && wLabels.length ? wLabels[0] : null;
-
-    // 次數
-    const repsList = sets.map(s=>s.rp).filter(v=>v>0);
-
-    // 情境一：所有屬性都一致 → 「阻力X · 時間 [× 重量] × N組」
-    if(allSameRes && allSameSec && allSameW){
+    // 三個屬性都一致 → 合併一行
+    if(sameRes && sameSec && sameW){
       const parts = [];
-      if(resVal) parts.push('阻力'+resVal);
-      if(secVal) parts.push(secFmt(secVal));
-      if(wVal) parts.push(wVal);
-      if(repsList.length>0 && !secVal) {
-        // 沒時間但有次數
-        parts.push(repsList.join('/')+' 下');
+      if(resArr[0]!=null) parts.push('阻力'+resArr[0]);
+      if(secArr[0]!=null) parts.push(secFmt(secArr[0]));
+      if(wArr[0]!=null) parts.push(wArr[0]);
+
+      // reps 處理
+      const repsExist = repsArr.filter(r=>r!=null);
+      if(repsExist.length>0){
+        if(allEqual(repsArr)){
+          // 全相同
+          parts.push(repsArr[0]+' 下');
+        } else {
+          // 不同 → 用 / 連接
+          parts.push('('+repsArr.map(r=>r==null?'-':r).join('/')+' 下)');
+        }
       }
-      let line = parts.join(' · ');
-      if(repsList.length>0 && secVal) line += '（'+repsList.join('/')+' 下）';
-      line += ' × '+sets.length+'組';
-      return line;
+      return parts.join(' · ') + ' × ' + sets.length + '組';
     }
 
-    // 情境二：每組屬性不同 → 一組一行
+    // 否則一組一行
     return sets.map(s=>{
       const parts = [];
       if(s.res!=='' && s.res!=null) parts.push('阻力'+s.res);
       if(s.sec>0) parts.push(secFmt(s.sec));
       const wL = fmtWeight(s.wKg, s.wRaw, s.wUnit);
       if(wL) parts.push(wL);
-      if(s.rp>0 && s.sec<=0) parts.push(s.rp+' 下');
-      let line = parts.join(' · ');
-      if(s.rp>0 && s.sec>0) line += '（'+s.rp+' 下）';
-      return line;
+      if(s.rp>0) parts.push(s.rp+' 下');
+      return parts.join(' · ');
     }).join('<br>');
   }
 
