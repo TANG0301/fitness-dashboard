@@ -68,12 +68,12 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
 .chips::-webkit-scrollbar{display:none;}
 .chip{padding:5px 13px;border-radius:20px;font-size:12px;font-weight:500;white-space:nowrap;border:1px solid var(--border2);color:var(--text2);background:var(--surface);cursor:pointer;font-family:'DM Sans',sans-serif;}
 .chip.on{background:var(--text);color:var(--bg);border-color:var(--text);}
-.ex-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--surface2);}
+.ex-row{display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--surface2);gap:10px;}
 .ex-row:last-child{border-bottom:none;}
 .ex-name{font-size:13px;font-weight:500;}
 .ex-meta{font-size:11px;color:var(--text3);margin-top:2px;}
-.ex-right{text-align:right;}
-.ex-cur{font-size:13px;font-weight:500;}
+.ex-right{text-align:right;flex-shrink:0;}
+.ex-cur{font-size:13px;font-weight:500;line-height:1.7;}
 .ex-best{font-size:11px;color:var(--text3);margin-top:2px;}
 .ex-best.hi{color:var(--green);}
 .week-block{margin-bottom:16px;}
@@ -84,7 +84,7 @@ html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;colo
 .log-top{display:flex;justify-content:space-between;align-items:flex-start;}
 .log-name{font-size:13px;font-weight:500;}
 .log-date-lbl{font-size:11px;color:var(--text3);}
-.log-detail{font-size:12px;color:var(--text2);margin-top:4px;}
+.log-detail{font-size:12px;color:var(--text2);margin-top:4px;line-height:1.6;}
 .log-chips{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;}
 .log-chip{font-size:10px;padding:2px 8px;border-radius:20px;background:var(--surface2);color:var(--text2);}
 .log-chip.muscle{background:var(--green-bg);color:var(--green);}
@@ -244,6 +244,26 @@ function classifyMuscle(raw) {
   return '有氧';
 }
 
+// 統一的重量顯示邏輯
+// 規則：
+//  - 有 weight_raw + weight_unit → 顯示原始（如 "25 lb"、"45 kg"）
+//  - 沒原始資料但有 weight_kg > 0 → 顯示 kg（1 位小數，去尾0）
+//  - 完全沒重量 → null（呼叫端決定要不要顯示「自重」或不顯示）
+function fmtWeight(wKg, wRaw, wUnit){
+  const raw = parseFloat(wRaw);
+  if (wUnit && !isNaN(raw) && raw > 0) {
+    // 原始數值也要去除多餘小數
+    const rawStr = (Math.round(raw * 100) / 100).toString().replace(/\.?0+$/, '');
+    return rawStr + ' ' + wUnit;
+  }
+  const kg = parseFloat(wKg);
+  if (!isNaN(kg) && kg > 0) {
+    const kgStr = (Math.round(kg * 10) / 10).toString();
+    return kgStr + ' kg';
+  }
+  return null; // 無重量
+}
+
 let workoutRows = [], inbodyRows = [];
 let ibChart = null;
 let activeMuscleFilter = '全部', activeLogFilter = '全部';
@@ -292,6 +312,7 @@ function parseWorkout(rows) {
     muscle_groups:r[3]||'', set:r[4]||'',
     weight_kg:r[5]||'', reps:r[6]||'', duration_sec:r[7]||'',
     max_weight_kg:r[8]||'', is_pr:r[9]||'FALSE', note:r[11]||'',
+    superset_group:r[12]||'',
     weight_raw:r[13]||'', weight_unit:r[14]||'', resistance:r[15]||'',
   }));
 }
@@ -317,9 +338,7 @@ async function initApp() {
   ]);
   workoutRows = parseWorkout(wRaw);
   inbodyRows  = parseInBody(iRaw);
-  // Parse period data: find start dates and end dates
   const periodData = (pRaw||[]).filter(r=>r[0]&&String(r[0]).includes('-'));
-  // Extract completed cycles (start date + end date)
   const periodCycles = [];
   let currentStart = null;
   periodData.forEach(r => {
@@ -329,10 +348,8 @@ async function initApp() {
       currentStart = null;
     }
   });
-  // If there's an open cycle (started but not ended), add it
   if (currentStart) periodCycles.push({ start: currentStart, end: null });
   window._periodCycles = periodCycles;
-  // For heatmap: all period dates
   window._periodRows = periodData.map(r=>({date:r[0], label:r[1]}));
   renderOverview();
   renderExercises();
@@ -372,7 +389,6 @@ function renderOverview() {
     '<div class="mc"><div class="mc-label">最新體脂</div><div class="mc-val">'+(lat?lat.body_fat_pct:'--')+'<span class="mc-unit"> %</span></div>'+(lat?dval(lat.body_fat_pct,prv?.body_fat_pct,' %',true):'')+'</div>'+
     '<div class="mc" style="grid-column:span 2;"><div class="mc-label" style="margin-bottom:6px;">今日建議</div><div id="advice-text" style="font-size:12px;line-height:1.6;color:var(--text2);">載入中...</div></div>';
 
-  // ── AI 建議（非同步呼叫 Railway）──
   (async () => {
     try {
       const cycles = window._periodCycles || [];
@@ -382,8 +398,6 @@ function renderOverview() {
         const lastCycle = cycles[cycles.length - 1];
         const startDate = new Date(lastCycle.start);
         const endDate = lastCycle.end ? new Date(lastCycle.end) : null;
-
-        // Calculate cycle length from completed cycles (start to start)
         if (cycles.length >= 2) {
           const diffs = [];
           for (let i = 1; i < cycles.length; i++) {
@@ -392,19 +406,11 @@ function renderOverview() {
           }
           if (diffs.length) cl = Math.round(diffs.reduce((a,b)=>a+b,0)/diffs.length);
         }
-
-        // Correct cycleDay calculation:
-        // If still in period (no end date or today <= end date): days since start
-        // If period ended: days since start (includes period days + days after)
         if (!endDate || now <= endDate) {
-          // Still in period
           cd = Math.floor((now - startDate) / 86400000);
         } else {
-          // Period ended, count from start date
           cd = Math.floor((now - startDate) / 86400000);
         }
-
-        // Next period: from start date + cycle length
         const nextDate = new Date(lastCycle.start);
         nextDate.setDate(nextDate.getDate() + cl);
         dtn = Math.floor((nextDate - now) / 86400000);
@@ -416,11 +422,9 @@ function renderOverview() {
       const resp = await fetch(CFG.RAILWAY_URL + '/get-advice?' + params.toString());
       const data = await resp.json();
 
-      // 更新今日建議
       const advEl = document.getElementById('advice-text');
       if (advEl && data.advice) advEl.textContent = data.advice;
 
-      // 更新週期提示
       const cycleEl = document.getElementById('cycle-tip');
       if (cycleEl) {
         if (data.phaseName && data.cycleTip) {
@@ -433,7 +437,6 @@ function renderOverview() {
           const nextInfo = dtn >= 0 && dtn <= 7
             ? '<div style="margin-top:8px;padding:6px 10px;background:#fef0f0;border-radius:8px;font-size:11px;color:#a32d2d;">🩸 預計 '+dtn+' 天後月經，本週輕訓練，準備鐵劑。</div>'
             : '<div style="font-size:10px;color:var(--text3);margin-top:6px;">預計下次：'+nextLabel+estNote+'</div>';
-          // 把3行格式轉成帶標籤的顯示
           const tipLines = data.cycleTip.split('\n').filter(l=>l.trim());
           const tipLabels = ['身體狀態', '注意事項', '行動建議'];
           const tipColors = ['var(--text2)', '#a32d2d', 'var(--green)'];
@@ -502,11 +505,11 @@ function renderOverview() {
   const prExMap={};
   workoutRows.forEach(r=>{
     const name=r.exercise_name||''; if(!name) return;
-    if(!prExMap[name]) prExMap[name]={name,muscle:r.muscle_groups||'',date:'',weight:0,reps:0,isPR:false};
+    if(!prExMap[name]) prExMap[name]={name,muscle:r.muscle_groups||'',date:'',weight:0,reps:0,isPR:false,wRaw:0,wUnit:''};
     const e=prExMap[name];
     const w=parseFloat(r.weight_kg||0), rp=parseInt(r.reps||0);
     if(r.date>e.date) e.date=r.date;
-    if(w>e.weight){e.weight=w;e.reps=rp;}
+    if(w>e.weight){e.weight=w;e.reps=rp;e.wRaw=parseFloat(r.weight_raw)||0;e.wUnit=r.weight_unit||'';}
     if(w===e.weight&&rp>e.reps) e.reps=rp;
     if((r.is_pr||'').toUpperCase()==='TRUE') e.isPR=true;
   });
@@ -516,7 +519,7 @@ function renderOverview() {
   document.getElementById('pr-list').innerHTML = prArr.length
     ? prArr.map(e=>{
         const setsNum=prSetMap[e.date+'|'+e.name]||0;
-        const wLabel=e.weight>0?e.weight+' kg':'自重';
+        const wLabel=fmtWeight(e.weight, e.wRaw, e.wUnit) || '自重';
         const detail=wLabel+(e.reps?' × '+e.reps+'下':'')+(setsNum?' × '+setsNum+'組':'');
         return '<div class="pr-row"><div><div class="pr-name">'+e.name+'</div><div class="pr-tag">'+classifyMuscle(e.muscle)+' · '+e.date+'</div></div><div class="pr-right"><div class="pr-weight">'+detail+'</div><span class="pr-badge">↑ PR</span></div></div>';
       }).join('')
@@ -559,85 +562,198 @@ function setMuscleFilter(m) {
   document.querySelectorAll('#muscle-chips .chip').forEach(c=>{c.className='chip'+(c.textContent===m?' on':'');});
   filterEx();
 }
+
+// 時間格式化
+function secFmt(s){
+  if(!s||s<=0) return null;
+  if(s<60) return s+'秒';
+  const m=Math.floor(s/60), r=s%60;
+  return r>0 ? m+'分'+r+'秒' : m+'分鐘';
+}
+
+// 把單一動作的 sets 渲染成 HTML（多行）+ 回傳 latestDate
+function renderExerciseSets(name, ex){
+  const sets = ex.latestSets.slice().sort((a,b)=>a.set-b.set);
+  const isCardio = ex.type==='cardio' || ex.type==='warmup';
+
+  if(isCardio){
+    // 阻力（如果全部相同就提到前面）
+    const resList = sets.map(s=>s.res).filter(v=>v!=='' && v!=null);
+    const allSameRes = resList.length===sets.length && new Set(resList).size===1;
+    const resVal = allSameRes ? resList[0] : null;
+
+    // 時間
+    const secList = sets.map(s=>s.sec).filter(v=>v>0);
+    const allSameSec = secList.length===sets.length && new Set(secList).size===1;
+    const secVal = allSameSec && secList.length ? secList[0] : null;
+
+    // 重量（同上）
+    const wLabels = sets.map(s=>fmtWeight(s.wKg, s.wRaw, s.wUnit)).filter(Boolean);
+    const allSameW = wLabels.length===sets.length && new Set(wLabels).size===1;
+    const wVal = allSameW && wLabels.length ? wLabels[0] : null;
+
+    // 次數
+    const repsList = sets.map(s=>s.rp).filter(v=>v>0);
+
+    // 情境一：所有屬性都一致 → 「阻力X · 時間 [× 重量] × N組」
+    if(allSameRes && allSameSec && allSameW){
+      const parts = [];
+      if(resVal) parts.push('阻力'+resVal);
+      if(secVal) parts.push(secFmt(secVal));
+      if(wVal) parts.push(wVal);
+      if(repsList.length>0 && !secVal) {
+        // 沒時間但有次數
+        parts.push(repsList.join('/')+' 下');
+      }
+      let line = parts.join(' · ');
+      if(repsList.length>0 && secVal) line += '（'+repsList.join('/')+' 下）';
+      line += ' × '+sets.length+'組';
+      return line;
+    }
+
+    // 情境二：每組屬性不同 → 一組一行
+    return sets.map(s=>{
+      const parts = [];
+      if(s.res!=='' && s.res!=null) parts.push('阻力'+s.res);
+      if(s.sec>0) parts.push(secFmt(s.sec));
+      const wL = fmtWeight(s.wKg, s.wRaw, s.wUnit);
+      if(wL) parts.push(wL);
+      if(s.rp>0 && s.sec<=0) parts.push(s.rp+' 下');
+      let line = parts.join(' · ');
+      if(s.rp>0 && s.sec>0) line += '（'+s.rp+' 下）';
+      return line;
+    }).join('<br>');
+  }
+
+  // strength：合併連續相同的「重量×次數」組
+  const groups=[];
+  sets.forEach(s=>{
+    const wL = fmtWeight(s.wKg, s.wRaw, s.wUnit) || '自重';
+    const key = wL+'|'+s.rp;
+    const last = groups[groups.length-1];
+    if(last && last.key===key) last.count++;
+    else groups.push({key, wL, rp:s.rp, count:1});
+  });
+  return groups.map(g=>g.wL+(g.rp?' × '+g.rp+'下':'')+' × '+g.count+'組').join('<br>');
+}
+
+// 計算單一動作的最佳紀錄
+// 邏輯：用 weight_kg 排序找最大，同重量比次數，再比同重同次的組數
+function calcBest(name){
+  const allRows = workoutRows.filter(r=>r.exercise_name===name);
+  if(!allRows.length) return null;
+
+  // 用 (kg, reps) 做 key 計算每組合的「組數」（同日同重同次）
+  const comboCount = {};
+  allRows.forEach(r=>{
+    const wKg = parseFloat(r.weight_kg||0);
+    const rp = parseInt(r.reps||0);
+    const k = r.date+'|'+wKg+'|'+rp;
+    if(!comboCount[k]) comboCount[k] = {date:r.date, wKg, rp, count:0, wRaw:parseFloat(r.weight_raw)||0, wUnit:r.weight_unit||''};
+    comboCount[k].count++;
+    // 保留有 raw 的記錄
+    const raw = parseFloat(r.weight_raw)||0;
+    if(raw>0 && r.weight_unit){
+      comboCount[k].wRaw = raw;
+      comboCount[k].wUnit = r.weight_unit;
+    }
+  });
+
+  // 找最佳：先比 kg，再比 reps，再比 count
+  let best = null;
+  Object.values(comboCount).forEach(c=>{
+    if(c.wKg<=0) return; // 沒重量不算 best
+    if(!best) { best = c; return; }
+    if(c.wKg > best.wKg) best = c;
+    else if(c.wKg === best.wKg && c.rp > best.rp) best = c;
+    else if(c.wKg === best.wKg && c.rp === best.rp && c.count > best.count) best = c;
+  });
+  return best;
+}
+
 function filterEx() {
   const q=(document.getElementById('ex-search').value||'').toLowerCase();
-  // Group rows by exercise name, collect all sets per date
+
+  // Step 1: 整理每個動作的「最近一次訓練」
   const exMap={};
   workoutRows.forEach(r=>{
     const name=r.exercise_name||''; if(!name) return;
     if(!exMap[name]) exMap[name]={
       name, muscle:r.muscle_groups||'', cat:classifyMuscle(r.muscle_groups),
       latestDate:'', latestSets:[], type:r.type||'',
-      bestWeightKg:0, bestReps:0, bestSetsCount:0, bestRaw:0, bestUnit:'kg'
+      supersetGroup:''
     };
     const e=exMap[name];
-    const wKg=parseFloat(r.weight_kg||0), rp=parseInt(r.reps||0);
-    const wRaw=parseFloat(r.weight_raw||r.weight_kg||0), wUnit=r.weight_unit||'kg';
-    const sec=parseInt(r.duration_sec||0), res=r.resistance||'';
-    if(r.date>e.latestDate){ e.latestDate=r.date; e.latestSets=[]; e.type=r.type||''; }
-    if(r.date===e.latestDate) e.latestSets.push({wKg,wRaw,wUnit,rp,sec,res,set:parseInt(r.set||0)});
-    // Best: weight > reps > sets
-    const setCount = workoutRows.filter(x=>x.date===r.date&&x.exercise_name===name).length;
-    if(wKg>e.bestWeightKg){e.bestWeightKg=wKg;e.bestReps=rp;e.bestSetsCount=setCount;e.bestRaw=wRaw;e.bestUnit=wUnit;}
-    else if(wKg===e.bestWeightKg&&rp>e.bestReps){e.bestReps=rp;e.bestSetsCount=setCount;e.bestRaw=wRaw;e.bestUnit=wUnit;}
-    else if(wKg===e.bestWeightKg&&rp===e.bestReps&&setCount>e.bestSetsCount){e.bestSetsCount=setCount;e.bestRaw=wRaw;e.bestUnit=wUnit;}
+    if(r.date > e.latestDate){
+      e.latestDate = r.date;
+      e.latestSets = [];
+      e.type = r.type||'';
+      e.supersetGroup = (r.superset_group||'').toString().trim();
+    }
+    if(r.date === e.latestDate){
+      e.latestSets.push({
+        set: parseInt(r.set||0),
+        wKg: parseFloat(r.weight_kg||0),
+        wRaw: parseFloat(r.weight_raw)||0,
+        wUnit: r.weight_unit||'',
+        rp: parseInt(r.reps||0),
+        sec: parseInt(r.duration_sec||0),
+        res: r.resistance||''
+      });
+      // 更新 supersetGroup（用最新看到的）
+      const sg = (r.superset_group||'').toString().trim();
+      if(sg) e.supersetGroup = sg;
+    }
   });
-  let arr=Object.values(exMap);
-  if(activeMuscleFilter!=='全部') arr=arr.filter(e=>e.cat===activeMuscleFilter);
-  if(q) arr=arr.filter(e=>e.name.toLowerCase().includes(q));
+
+  // Step 2: 篩選
+  let arr = Object.values(exMap);
+  if(activeMuscleFilter!=='全部') arr = arr.filter(e=>e.cat===activeMuscleFilter);
+  if(q) arr = arr.filter(e=>e.name.toLowerCase().includes(q));
   arr.sort((a,b)=>b.latestDate.localeCompare(a.latestDate));
 
-  function secFmt(s){if(!s||s<=0)return null;if(s<60)return s+'秒';const m=Math.floor(s/60),r=s%60;return r>0?m+'分'+r+'秒':m+'分鐘';}
-  function wLabel(wKg,wRaw,wUnit){
-    if(!wKg&&wKg!==0) return '自重';
-    if(wKg===0) return '自重';
-    return (wRaw&&wUnit==='lb') ? wRaw+' lb' : wKg+' kg';
-  }
-
-  document.getElementById('ex-table').innerHTML=arr.length?arr.map(e=>{
-    const sets=e.latestSets.sort((a,b)=>a.set-b.set);
-    const isCardio=e.type==='cardio'||e.type==='warmup';
-    let topLines='', bot='';
-
-    if(isCardio){
-      const allReps=sets.map(s=>s.rp).filter(r=>r>0);
-      const allSec=sets.filter(s=>s.sec>0);
-      const resList=sets.map(s=>s.res).filter(Boolean);
-      const resVal=resList.length&&new Set(resList).size===1?resList[0]:'';
-      const resPrefix=resVal?'阻力'+resVal+' · ':'';
-      const secSet=new Set(allSec.map(s=>s.sec));
-      if(allSec.length>0&&secSet.size===1){
-        // All same duration - compact display
-        const durStr=secFmt(allSec[0].sec);
-        const repsStr=allReps.length?'（'+allReps.join('/')+' 下）':'';
-        topLines=resPrefix+durStr+repsStr+' × '+allSec.length+'組';
-      } else if(allSec.length>0){
-        // Different durations
-        const parts=sets.filter(s=>s.sec>0).map(s=>(s.res&&s.res!==resVal?'阻力'+s.res+' · ':'')+secFmt(s.sec)+(s.rp&&s.rp>0?' '+s.rp+'下':''));
-        topLines=resPrefix+parts.join(' / ')+' × '+allSec.length+'組';
-      } else if(allReps.length>0){
-        // Only reps, no time
-        topLines=resPrefix+allReps.join('/')+' 下 × '+sets.length+'組';
-      } else {
-        topLines=sets.length+'組';
+  // Step 3: 按 (latestDate + supersetGroup) 分組——同一天且同 group 合併顯示
+  const cards = [];
+  const consumed = new Set();
+  arr.forEach(e=>{
+    if(consumed.has(e.name)) return;
+    if(e.supersetGroup){
+      // 找同日同 group 的所有動作
+      const group = arr.filter(x=>!consumed.has(x.name) && x.latestDate===e.latestDate && x.supersetGroup===e.supersetGroup);
+      if(group.length>1){
+        group.forEach(g=>consumed.add(g.name));
+        cards.push({type:'superset', exercises:group, date:e.latestDate});
+        return;
       }
-    } else {
-      // Strength: group consecutive same-weight sets
-      const groups=[];
-      sets.forEach(s=>{
-        const last=groups[groups.length-1];
-        if(last&&last.wKg===s.wKg&&last.rp===s.rp) last.count++;
-        else groups.push({wKg:s.wKg,wRaw:s.wRaw,wUnit:s.wUnit,rp:s.rp,count:1});
-      });
-      const lines=groups.map(g=>wLabel(g.wKg,g.wRaw,g.wUnit)+(g.rp?' × '+g.rp+'下':'')+' × '+g.count+'組');
-      topLines=lines.join('<br>');
-      // Best record
-      const bw=e.bestWeightKg>0?(e.bestRaw&&e.bestUnit==='lb'?e.bestRaw+' lb':e.bestWeightKg+' kg'):'自重';
-      const isBest=sets.some(s=>s.wKg>=e.bestWeightKg&&s.wKg>0);
-      bot='<div class="ex-best '+(isBest?'hi':'')+'">最佳 '+bw+(e.bestReps?' × '+e.bestReps+'下':'')+(e.bestSetsCount?' × '+e.bestSetsCount+'組':'')+'</div>';
     }
-    return '<div class="ex-row"><div><div class="ex-name">'+e.name+'</div><div class="ex-meta">'+e.latestDate+'</div></div><div class="ex-right" style="text-align:right;"><div class="ex-cur" style="line-height:1.7;">'+topLines+'</div>'+bot+'</div></div>';
-  }).join(''):'<div class="empty">沒有符合的動作</div>';
+    consumed.add(e.name);
+    cards.push({type:'single', exercise:e, date:e.latestDate});
+  });
+
+  // Step 4: 渲染
+  document.getElementById('ex-table').innerHTML = cards.length ? cards.map(card=>{
+    if(card.type==='superset'){
+      const names = card.exercises.map(x=>x.name).join(' + ');
+      const lines = card.exercises.map(x=>renderExerciseSets(x.name, x)).join('<br>');
+      // 超級組通常是 cardio，不顯示最佳
+      return '<div class="ex-row"><div><div class="ex-name">'+names+'</div><div class="ex-meta">'+card.date+'</div></div><div class="ex-right"><div class="ex-cur">'+lines+'</div></div></div>';
+    } else {
+      const e = card.exercise;
+      const topLines = renderExerciseSets(e.name, e);
+      const isCardio = e.type==='cardio' || e.type==='warmup';
+      let bot = '';
+      if(!isCardio){
+        const best = calcBest(e.name);
+        if(best){
+          const bw = fmtWeight(best.wKg, best.wRaw, best.wUnit) || '自重';
+          // 判斷今天是否達到最佳
+          const todayBest = e.latestSets.some(s=>s.wKg>=best.wKg && parseInt(s.rp||0)>=best.rp);
+          bot = '<div class="ex-best '+(todayBest?'hi':'')+'">最佳 '+bw+(best.rp?' × '+best.rp+'下':'')+(best.count?' × '+best.count+'組':'')+'</div>';
+        }
+      }
+      return '<div class="ex-row"><div><div class="ex-name">'+e.name+'</div><div class="ex-meta">'+e.latestDate+'</div></div><div class="ex-right"><div class="ex-cur">'+topLines+'</div>'+bot+'</div></div>';
+    }
+  }).join('') : '<div class="empty">沒有符合的動作</div>';
 }
 
 // ── 日誌 ──
@@ -675,23 +791,66 @@ function renderLogList() {
     const dayMap={};
     rows.forEach(r=>{if(!dayMap[r.date])dayMap[r.date]=[];dayMap[r.date].push(r);});
     const items=Object.keys(dayMap).sort().reverse().map(date=>{
+      // 按動作分組
       const exMap2={};
       dayMap[date].forEach(r=>{
         const k=r.exercise_name||'';
-        if(!exMap2[k]) exMap2[k]={name:k,muscle:r.muscle_groups||'',sets:[],isPR:false,note:''};
-        exMap2[k].sets.push(r);
+        if(!exMap2[k]) exMap2[k]={
+          name:k, muscle:r.muscle_groups||'', sets:[],
+          isPR:false, note:'', type:r.type||'',
+          supersetGroup:(r.superset_group||'').toString().trim()
+        };
+        exMap2[k].sets.push({
+          set: parseInt(r.set||0),
+          wKg: parseFloat(r.weight_kg||0),
+          wRaw: parseFloat(r.weight_raw)||0,
+          wUnit: r.weight_unit||'',
+          rp: parseInt(r.reps||0),
+          sec: parseInt(r.duration_sec||0),
+          res: r.resistance||''
+        });
         if((r.is_pr||'').toUpperCase()==='TRUE') exMap2[k].isPR=true;
         if(r.note) exMap2[k].note=r.note;
+        const sg = (r.superset_group||'').toString().trim();
+        if(sg) exMap2[k].supersetGroup = sg;
       });
-      return Object.values(exMap2).map(ex=>{
-        const setsNum=ex.sets.length;
-        const maxW=Math.max(...ex.sets.map(s=>parseFloat(s.weight_kg||0)));
-        const maxSec=Math.max(...ex.sets.map(s=>parseInt(s.duration_sec||0)));
-        const lastReps=ex.sets[ex.sets.length-1]?.reps||'';
-        function secFmt(s){if(!s||s<=0)return null;if(s<60)return s+'秒';const m=Math.floor(s/60),r=s%60;return r>0?m+'分'+r+'秒':m+'分鐘';}
-        const detail=maxSec>0&&maxW===0?secFmt(maxSec)+' × '+setsNum+'組':(maxW>0?maxW+' kg':'自重')+(lastReps?' × '+lastReps+'下':'')+' × '+setsNum+'組';
-        const cat=classifyMuscle(ex.muscle);
-        return '<div class="log-item"><div class="log-top"><div class="log-name">'+ex.name+'</div><div class="log-date-lbl">'+date.slice(5).replace('-','/')+'</div></div><div class="log-detail">'+detail+'</div><div class="log-chips"><span class="log-chip muscle">'+cat+'</span>'+(ex.isPR?'<span class="log-chip pr">PR</span>':'')+(ex.note?'<span class="log-chip">'+ex.note+'</span>':'')+'</div></div>';
+      // 把日誌也做超級組合併
+      const exList = Object.values(exMap2);
+      const consumed = new Set();
+      const cards = [];
+      exList.forEach(e=>{
+        if(consumed.has(e.name)) return;
+        if(e.supersetGroup){
+          const group = exList.filter(x=>!consumed.has(x.name) && x.supersetGroup===e.supersetGroup);
+          if(group.length>1){
+            group.forEach(g=>consumed.add(g.name));
+            cards.push({type:'superset', exercises:group});
+            return;
+          }
+        }
+        consumed.add(e.name);
+        cards.push({type:'single', exercise:e});
+      });
+      return cards.map(card=>{
+        if(card.type==='superset'){
+          const names = card.exercises.map(x=>x.name).join(' + ');
+          // 借用 renderExerciseSets 邏輯
+          const lines = card.exercises.map(x=>{
+            // 建臨時 ex 物件
+            const tmp = {latestSets:x.sets, type:x.type};
+            return renderExerciseSets(x.name, tmp);
+          }).join('<br>');
+          const cat = classifyMuscle(card.exercises[0].muscle);
+          const anyPR = card.exercises.some(x=>x.isPR);
+          const notes = card.exercises.map(x=>x.note).filter(Boolean);
+          return '<div class="log-item"><div class="log-top"><div class="log-name">'+names+'</div><div class="log-date-lbl">'+date.slice(5).replace('-','/')+'</div></div><div class="log-detail">'+lines+'</div><div class="log-chips"><span class="log-chip muscle">'+cat+'</span>'+(anyPR?'<span class="log-chip pr">PR</span>':'')+notes.map(n=>'<span class="log-chip">'+n+'</span>').join('')+'</div></div>';
+        } else {
+          const ex = card.exercise;
+          const tmp = {latestSets:ex.sets, type:ex.type};
+          const detail = renderExerciseSets(ex.name, tmp);
+          const cat = classifyMuscle(ex.muscle);
+          return '<div class="log-item"><div class="log-top"><div class="log-name">'+ex.name+'</div><div class="log-date-lbl">'+date.slice(5).replace('-','/')+'</div></div><div class="log-detail">'+detail+'</div><div class="log-chips"><span class="log-chip muscle">'+cat+'</span>'+(ex.isPR?'<span class="log-chip pr">PR</span>':'')+(ex.note?'<span class="log-chip">'+ex.note+'</span>':'')+'</div></div>';
+        }
       }).join('');
     }).join('');
     return `<div class="week-block"><div class="week-head"><div class="week-range">${label}</div><div class="week-stat">${dayCount}天 · ${totalVol.toLocaleString()}kg</div></div>${items}</div>`;
