@@ -230,7 +230,7 @@ const CFG = {
   PASSWORD: '5566',
   SHEET_ID: '1hYZervTmM7aDUJmSlE187omIAPa6zMi0JHcsPVt07Rg',
   API_KEY: 'AIzaSyCxyLWIwWBIoV3JXyeb1qWi9En8qU5x4IQ',
-  RAILWAY_URL: 'https://workout-bot-6vqb.onrender.com',
+  RAILWAY_URL: 'https://workout-bot-production-021b.up.railway.app',
 };
 
 const CATS = ['全部','臀腿','肩背胸','核心','心肺','有氧'];
@@ -292,6 +292,7 @@ function parseWorkout(rows) {
     muscle_groups:r[3]||'', set:r[4]||'',
     weight_kg:r[5]||'', reps:r[6]||'', duration_sec:r[7]||'',
     max_weight_kg:r[8]||'', is_pr:r[9]||'FALSE', note:r[11]||'',
+    weight_raw:r[13]||'', weight_unit:r[14]||'kg',
   }));
 }
 function parseInBody(rows) {
@@ -310,7 +311,7 @@ async function initApp() {
   document.getElementById('topbar-date').textContent =
     new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'long'});
   const [wRaw, iRaw, pRaw] = await Promise.all([
-    fetchRange('Workout!A:M'),
+    fetchRange('Workout!A:O'),
     fetchRange('InBody!A:V'),
     fetchRange('Period!A:C'),
   ]);
@@ -563,12 +564,26 @@ function filterEx() {
   const exMap={}, setMap={};
   workoutRows.forEach(r=>{
     const name=r.exercise_name||''; if(!name) return;
-    if(!exMap[name]) exMap[name]={name,muscle:r.muscle_groups||'',cat:classifyMuscle(r.muscle_groups),latestDate:'',latestWeight:0,latestReps:0,latestSec:0,bestWeight:0};
+    if(!exMap[name]) exMap[name]={
+      name, muscle:r.muscle_groups||'', cat:classifyMuscle(r.muscle_groups),
+      latestDate:'', latestWeight:0, latestReps:0, latestSec:0, latestUnit:'kg', latestRaw:0,
+      bestWeightKg:0, bestReps:0, bestSets:0, bestRaw:0, bestUnit:'kg', bestDate:''
+    };
     const e=exMap[name];
-    const w=parseFloat(r.weight_kg||0),rp=parseInt(r.reps||0),sec=parseInt(r.duration_sec||0);
-    if(r.date>e.latestDate){e.latestDate=r.date;e.latestWeight=w;e.latestReps=rp;e.latestSec=sec;}
-    if(w>e.bestWeight) e.bestWeight=w;
+    const wKg=parseFloat(r.weight_kg||0), rp=parseInt(r.reps||0), sec=parseInt(r.duration_sec||0);
+    const wRaw=parseFloat(r.weight_raw||0)||wKg, wUnit=r.weight_unit||'kg';
+    // Latest date tracking
+    if(r.date>e.latestDate){e.latestDate=r.date;e.latestWeight=wKg;e.latestReps=rp;e.latestSec=sec;e.latestUnit=wUnit;e.latestRaw=wRaw||wKg;}
+    // Best tracking: weight > reps > sets
     const k=r.date+'|'+name; setMap[k]=(setMap[k]||0)+1;
+    const curSets=setMap[k];
+    if(wKg>e.bestWeightKg){
+      e.bestWeightKg=wKg; e.bestReps=rp; e.bestSets=curSets; e.bestRaw=wRaw||wKg; e.bestUnit=wUnit; e.bestDate=r.date;
+    } else if(wKg===e.bestWeightKg && rp>e.bestReps){
+      e.bestReps=rp; e.bestSets=curSets; e.bestRaw=wRaw||wKg; e.bestUnit=wUnit; e.bestDate=r.date;
+    } else if(wKg===e.bestWeightKg && rp===e.bestReps && curSets>e.bestSets){
+      e.bestSets=curSets; e.bestRaw=wRaw||wKg; e.bestUnit=wUnit; e.bestDate=r.date;
+    }
   });
   let arr=Object.values(exMap);
   if(activeMuscleFilter!=='全部') arr=arr.filter(e=>e.cat===activeMuscleFilter);
@@ -581,11 +596,12 @@ function filterEx() {
     if(e.latestSec>0&&e.latestWeight===0){
       top=secToDisplay(e.latestSec)+' × '+setsNum+'組';
     } else {
-      const w=e.latestWeight>0?e.latestWeight+' kg':'自重';
-      const bw=e.bestWeight>0?e.bestWeight+' kg':'自重';
+      const latestWLabel=e.latestWeight>0?(e.latestRaw&&e.latestUnit==='lb'?e.latestRaw+' lb':e.latestWeight+' kg'):'自重';
+      const bestWLabel=e.bestWeightKg>0?(e.bestRaw&&e.bestUnit==='lb'?e.bestRaw+' lb':e.bestWeightKg+' kg'):'自重';
       const repsStr=e.latestReps>0?' × '+e.latestReps+'下':'';
-      top=w+repsStr+' × '+setsNum+'組';
-      bot='<div class="ex-best '+(e.latestWeight>=e.bestWeight?'hi':'')+'">最佳 '+bw+'</div>';
+      top=latestWLabel+repsStr+' × '+setsNum+'組';
+      const isCurrentBest=e.latestWeight>=e.bestWeightKg;
+      bot='<div class="ex-best '+(isCurrentBest?'hi':'')+'">最佳 '+bestWLabel+(e.bestReps?' × '+e.bestReps+'下':'')+(e.bestSets?' × '+e.bestSets+'組':'')+'</div>';
     }
     return '<div class="ex-row"><div><div class="ex-name">'+e.name+'</div><div class="ex-meta">'+e.latestDate+'</div></div><div class="ex-right"><div class="ex-cur">'+top+'</div>'+bot+'</div></div>';
   }).join(''):'<div class="empty">沒有符合的動作</div>';
