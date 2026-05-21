@@ -600,22 +600,24 @@ function filterEx() {
     let topLines='', bot='';
 
     if(isCardio){
-      // Group by resistance for cardio display
-      const hasRes=sets.some(s=>s.res);
-      const hasSec=sets.some(s=>s.sec>0);
       const allReps=sets.map(s=>s.rp).filter(r=>r>0);
       const allSec=sets.filter(s=>s.sec>0);
-      // Check if all same duration
-      const secSet=new Set(allSec.map(s=>s.sec));
       const resList=sets.map(s=>s.res).filter(Boolean);
       const resVal=resList.length&&new Set(resList).size===1?resList[0]:'';
-      if(secSet.size===1&&allSec.length===sets.length){
-        // All same duration
+      const resPrefix=resVal?'阻力'+resVal+' · ':'';
+      const secSet=new Set(allSec.map(s=>s.sec));
+      if(allSec.length>0&&secSet.size===1){
+        // All same duration - compact display
         const durStr=secFmt(allSec[0].sec);
         const repsStr=allReps.length?'（'+allReps.join('/')+' 下）':'';
-        topLines=(resVal?'阻力'+resVal+' · ':'')+durStr+repsStr+' × '+sets.length+'組';
+        topLines=resPrefix+durStr+repsStr+' × '+allSec.length+'組';
       } else if(allSec.length>0){
-        topLines=sets.map(s=>(s.res?'阻力'+s.res+' · ':'')+secFmt(s.sec)+(s.rp?' '+s.rp+'下':'')).join(' / ')+' × '+sets.length+'組';
+        // Different durations
+        const parts=sets.filter(s=>s.sec>0).map(s=>(s.res&&s.res!==resVal?'阻力'+s.res+' · ':'')+secFmt(s.sec)+(s.rp&&s.rp>0?' '+s.rp+'下':''));
+        topLines=resPrefix+parts.join(' / ')+' × '+allSec.length+'組';
+      } else if(allReps.length>0){
+        // Only reps, no time
+        topLines=resPrefix+allReps.join('/')+' 下 × '+sets.length+'組';
       } else {
         topLines=sets.length+'組';
       }
